@@ -1,0 +1,2 @@
+python main.py --epochs 10 --n_shadows 2 --shadow_id 0 --model resnet18 --pkeep 0.5 --savedir exp/cifar10/flipped_label --poison_type flipped_label --num_to_poison 5 --num_to_flip 5 --repeat_num 10 --fixed_label 0 --use_original_label 
+python main.py --epochs 10 --n_shadows 2 --shadow_id 1 --model resnet18 --pkeep 0.5 --savedir exp/cifar10/flipped_label --poison_type flipped_label --num_to_poison 5 --num_to_flip 5 --repeat_num 10 --fixed_label 0 --use_original_label 
