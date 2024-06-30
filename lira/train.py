@@ -21,34 +21,39 @@ from tqdm import tqdm
 
 from lira.wide_resnet import WideResNet
 
-def run(args, train_dl, test_dl, keep_bool, DEVICE):
+def train(args, train_dl, test_dl, keep_bool, DEVICE, data_type):
     args.debug = True
     wandb.init(project="lira", mode="disabled" if args.debug else "online")
     # 初始化模型
     if args.model == "wresnet28-2":
-        m = WideResNet(28, 2, 0.0, 10)
+        model = WideResNet(28, 2, 0.0, 10)
     elif args.model == "wresnet28-10":
-        m = WideResNet(28, 10, 0.3, 10)
+        model = WideResNet(28, 10, 0.3, 10)
     elif args.model == "resnet18":
-        m = models.resnet18(weights=None, num_classes=10)
-        m.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        m.maxpool = nn.Identity()
+        model = models.resnet18(weights=None, num_classes=10)
+        model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        model.maxpool = nn.Identity()
     else:
         raise NotImplementedError
-    m = m.to(DEVICE)
+    model = model.to(DEVICE)
 
-    optim = torch.optim.SGD(m.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
+    optim = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=args.epochs)
+
+    all_train_labels = []  # List to collect all labels
 
     # 训练过程
     for i in range(args.epochs):
-        m.train()
+        model.train()
         loss_total = 0
         pbar = tqdm(train_dl)
         for itr, (x, y) in enumerate(pbar):
             x, y = x.to(DEVICE), y.to(DEVICE)
 
-            loss = F.cross_entropy(m(x), y)
+            if i == 0:  # Only collect labels in the first epoch to avoid duplicates
+                all_train_labels.extend(y.cpu().numpy())
+
+            loss = F.cross_entropy(model(x), y)
             loss_total += loss
 
             pbar.set_postfix_str(f"loss: {loss:.2f}, epoch: {i+1}")
@@ -61,13 +66,15 @@ def run(args, train_dl, test_dl, keep_bool, DEVICE):
         # Log the loss and the current epoch number to wandb
         wandb.log({"epoch": i+1, "loss": loss_total / len(train_dl)})
 
-    print(f"[test] acc_test: {get_acc(m, test_dl, DEVICE):.4f}")
-    wandb.log({"acc_test": get_acc(m, test_dl, DEVICE)})
+    print(f"[test] acc_test: {get_acc(model, test_dl, DEVICE):.4f}")
+    wandb.log({"acc_test": get_acc(model, test_dl, DEVICE)})
 
-    savedir = os.path.join(args.savedir, str(args.shadow_id))
+    savedir = os.path.join(args.savedir, str(args.shadow_id), data_type)
     os.makedirs(savedir, exist_ok=True)
-    np.save(savedir + "/keep.npy", keep_bool)
-    torch.save(m.state_dict(), savedir + "/model.pt")
+    np.save(os.path.join(savedir, "keep.npy"), keep_bool)
+    np.save(os.path.join(savedir, "labels.npy"), np.array(all_train_labels))  # Save labels as .npy file
+    torch.save(model.state_dict(), os.path.join(savedir, "model.pt"))
+
 
 @torch.no_grad()
 def get_acc(model, dl, DEVICE):
