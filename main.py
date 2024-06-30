@@ -22,7 +22,7 @@ def main():
     parser.add_argument("--fixed_label", default=0, type=int)
     parser.add_argument("--num_to_flip", default=1000, type=int)
     parser.add_argument("--repeat_num", default=10, type=int)
-    parser.add_argument("--poison_method", default="random", type=str, choices=["random", "first"])
+    parser.add_argument("--poison_method", default="first", type=str, choices=["random", "first"])
     parser.add_argument("--use_original_label", action="store_true")
     args = parser.parse_args()
 
@@ -43,10 +43,13 @@ def main():
     # 创建Poisoner实例并应用投毒方法
     poisoner = Poisoner(train_dl, repeat_num=args.repeat_num)
     if args.poison_type == "random_uniform":
+        print("poison_type: random_uniform")
         poisoner.poison_random_uniform(args.num_to_poison)
     elif args.poison_type == "fixed_label":
+        print("poison_type: fixed_label")
         poisoner.poison_fixed_label(args.num_to_poison, args.fixed_label, args.use_original_label)
     elif args.poison_type == "flipped_label":
+        print("poison_type: flipped_label")
         poisoner.poison_flipped_and_fixed_labels(args.num_to_flip, args.num_to_poison, args.fixed_label, args.use_original_label)
 
     # 获取投毒后的数据加载器

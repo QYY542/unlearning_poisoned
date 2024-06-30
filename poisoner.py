@@ -19,34 +19,30 @@ class Poisoner:
 
     def poison_fixed_label(self, num_to_poison, label, use_original_label=True):
         poison_indices = self._select_samples(num_to_poison)
-        if use_original_label:
-            original_data = self.dataset.dataset
-            new_labels = [original_data.targets[idx] for idx in poison_indices]
-        else:
-            new_labels = np.full((num_to_poison,), label)
+        new_labels = [self.dataset.dataset.targets[idx] if use_original_label else label for idx in poison_indices]
         self._inject_poison(poison_indices, new_labels)
 
     def poison_flipped_and_fixed_labels(self, num_to_flip, num_to_fix, fixed_label, use_original_label=True):
-        original_data = self.dataset.dataset
         # Flip labels
         flip_indices = self._select_samples(num_to_flip)
-        flipped_labels = [(original_data.targets[idx] + 1) % 10 for idx in flip_indices]  # Simple flip logic
-        self._inject_poison(flip_indices, flipped_labels)
-        
+        flipped_labels = [(self.dataset.dataset.targets[idx] + 1) % 10 for idx in flip_indices]
+
         # Fixed labels
         fix_indices = self._select_samples(num_to_fix)
-        if use_original_label:
-            fixed_labels = [original_data.targets[idx] for idx in fix_indices]
-        else:
-            fixed_labels = np.full((num_to_fix,), fixed_label)
-        self._inject_poison(fix_indices, fixed_labels)
+        fixed_labels = [self.dataset.dataset.targets[idx] if use_original_label else fixed_label for idx in fix_indices]
+
+        # Combine indices and labels
+        total_indices = np.concatenate((flip_indices, fix_indices))
+        total_labels = flipped_labels + fixed_labels
+
+        # Inject poison
+        self._inject_poison(total_indices, total_labels)
 
     def _select_samples(self, num_to_poison):
-        original_data = self.dataset.dataset
         if POISON_METHOD == "first":
             return np.arange(num_to_poison)
         elif POISON_METHOD == "random":
-            return np.random.choice(len(original_data), size=num_to_poison, replace=False)
+            return np.random.choice(len(self.dataset.dataset), size=num_to_poison, replace=False)
         else:
             raise ValueError("Unsupported poison method")
 
@@ -61,3 +57,4 @@ class Poisoner:
 
     def get_poisoned_data_loader(self):
         return self.poisoned_dataloader
+    
