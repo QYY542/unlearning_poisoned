@@ -32,17 +32,25 @@ def inference(args, train_dl, device, data_type):
         model.eval()
 
         logits_n = []
+        all_labels = []
         for _ in range(args.n_queries):
             logits = []
-            for x, _ in tqdm(train_dl):
+            # 每次取出x都会应用data_loader中的train_transform对原数据进行裁剪变形
+            for x, y in tqdm(train_dl):
                 x = x.to(device)
                 outputs = model(x)
                 logits.append(outputs.cpu().numpy())
+                all_labels.append(y.numpy())  # Collect labels here
             logits_n.append(np.concatenate(logits))
         logits_n = np.stack(logits_n, axis=1)
 
         logits_path = os.path.join(args.savedir, str(args.shadow_id), data_type, "logits.npy")
         np.save(logits_path, logits_n)
         print(f"Logits saved to {logits_path}")
+
+        # Save labels
+        labels_path = os.path.join(args.savedir, str(args.shadow_id), data_type, "labels.npy")
+        np.save(labels_path, np.concatenate(all_labels))
+        print(f"Labels saved to {labels_path}")
     else:
         print(f"Model not found in {model_path}")

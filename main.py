@@ -24,7 +24,6 @@ def main():
     parser.add_argument("--poison_type", default="random_uniform", type=str, choices=["random_uniform", "fixed_label", "flipped_label"])
     parser.add_argument("--num_to_poison", default=10000, type=int)
     parser.add_argument("--fixed_label", default=0, type=int)
-    parser.add_argument("--num_to_flip", default=1000, type=int)
     parser.add_argument("--repeat_num", default=10, type=int)
     parser.add_argument("--poison_method", default="first", type=str, choices=["random", "first"])
     parser.add_argument("--use_original_label", action="store_true")
@@ -37,14 +36,16 @@ def main():
 
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    seed = np.random.randint(0, 1000000000)
-    seed ^= int(time.time())
+    # seed = np.random.randint(0, 1000000000)
+    # seed ^= int(time.time())
+    seed = 510
     np.random.seed(seed)
 
-    train_dl, test_dl, keep_bool = get_data_loaders(args.pkeep, args.shadow_id, args.n_shadows, seed=seed)
-    
+    full_train_dl, reduced_train_dl, test_dl, keep_bool = get_data_loaders(args.pkeep, args.shadow_id, args.n_shadows, seed=seed)
+
+
     # 创建Poisoner实例并应用投毒方法
-    poisoner = Poisoner(train_dl, repeat_num=args.repeat_num)
+    poisoner = Poisoner(args, full_train_dl, reduced_train_dl, repeat_num=args.repeat_num)
     if args.poison_type == "random_uniform":
         print("poison_type: random_uniform")
         poisoner.poison_random_uniform(args.num_to_poison)
@@ -53,24 +54,47 @@ def main():
         poisoner.poison_fixed_label(args.num_to_poison, args.fixed_label, args.use_original_label)
     elif args.poison_type == "flipped_label":
         print("poison_type: flipped_label")
-        poisoner.poison_flipped_and_fixed_labels(args.num_to_flip, args.num_to_poison, args.fixed_label, args.use_original_label)
+        poisoner.poison_flipped_and_fixed_labels(args.num_to_poison, args.fixed_label, args.use_original_label)
 
     # 获取投毒后的数据加载器
-    poisoned_train_dl = poisoner.get_poisoned_data_loader()
+    poisoned_full_dl, poisoned_reduced_dl = poisoner.get_poisoned_data_loader()
 
-    print(f"Size of clean train_dl: {len(train_dl.dataset)}")
+    # 设置打印选项
+    # torch.set_printoptions(threshold=10, edgeitems=2, linewidth=150)
+
+    # print("first")
+    # data, label = poisoned_reduced_dl.dataset[0]
+    # print(data)
+    # print(label)
+    # print("first")
+    # data, label = poisoned_reduced_dl.dataset[0]
+    # print(data)
+    # print(label)
+
+    # total_samples = len(poisoned_reduced_dl.dataset)
+    # for i in range(total_samples - 4, total_samples):
+    #     print("last")
+    #     data, label = poisoned_reduced_dl.dataset[i]
+    #     print(data)
+    #     print(label)
+
+    print(f"Size of clean train_dl: {len(reduced_train_dl.dataset)}")
+    print(f"Size of clean train_dl targets: {len(reduced_train_dl.dataset.targets)}")
+    print(reduced_train_dl.dataset.targets[-10:])
     # 原始数据集
-    train(args, train_dl, test_dl, keep_bool, DEVICE, "clean")
-    inference(args, train_dl, DEVICE, "clean")
-    score(args, train_dl, "clean") 
+    train(args, reduced_train_dl, test_dl, keep_bool, DEVICE, "clean")
+    inference(args, full_train_dl, DEVICE, "clean")
+    score(args, full_train_dl, "clean") 
 
 
 
-    print(f"Size of poisoned train_dl: {len(poisoned_train_dl.dataset)}")
+    print(f"Size of poisoned train_dl: {len(poisoned_reduced_dl.dataset)}")
+    print(f"Size of poisoned train_dl targets: {len(poisoned_reduced_dl.dataset.targets)}")
+    print(poisoned_reduced_dl.dataset.targets[-10:])
     # 投毒数据集
-    train(args, poisoned_train_dl, test_dl, keep_bool, DEVICE, "poisoned")
-    inference(args, poisoned_train_dl, DEVICE, "poisoned")
-    score(args, poisoned_train_dl, "poisoned") 
+    train(args, poisoned_reduced_dl, test_dl, keep_bool, DEVICE, "poisoned")
+    inference(args, poisoned_full_dl, DEVICE, "poisoned")
+    score(args, poisoned_full_dl, "poisoned") 
 
 if __name__ == "__main__":
     main()

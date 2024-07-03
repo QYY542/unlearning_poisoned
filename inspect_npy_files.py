@@ -1,14 +1,12 @@
 import os
 import numpy as np
 
-def load_and_print_data(file_path, data_label, num_items=3):
+def load_data(file_path):
     """
-    Load a .npy file, print the first few items, and calculate the average.
+    Load a .npy file and return the data.
     
     Args:
         file_path (str): Path to the .npy file.
-        data_label (str): Label to print for data (e.g., 'scores' or 'logits').
-        num_items (int): Number of items to print.
         
     Returns:
         numpy.ndarray: Data loaded from the npy file, or None if file does not exist.
@@ -17,17 +15,27 @@ def load_and_print_data(file_path, data_label, num_items=3):
         print(f"File {file_path} does not exist.")
         return None
 
-    data = np.load(file_path)
-    print(f"Data from {file_path} ({data_label}, showing first {num_items} items):")
-    print(data[:num_items])
-    return data
+    return np.load(file_path)
+
+def print_filtered_data(scores, logits, labels, keep, num_items):
+    count = 0
+    for i in range(len(keep)):
+        if keep[i]:
+            print(f"Item {count+1}:")
+            print("Score:", scores[i])
+            print("Logit:")
+            print(logits[i])
+            print("Label:", labels[i])
+            print()
+            count += 1
+            if count >= num_items:
+                break
 
 def main():
-    savedir = "exp/cifar10/flipped_label"
-    num_items = 3
-
-    clean_scores = []
-    poisoned_scores = []
+    # savedir = "exp/cifar10/flipped_label"
+    # savedir = "exp/cifar10/fixed_label"
+    savedir = "exp/cifar10/random_uniform"
+    num_items = 2
 
     for shadow_id in os.listdir(savedir):
         for data_type in ['clean', 'poisoned']:
@@ -36,31 +44,17 @@ def main():
             labels_path = os.path.join(savedir, shadow_id, data_type, "labels.npy")
             keep_path = os.path.join(savedir, shadow_id, data_type, "keep.npy")
 
-            # Load and print logits
-            logits_data = load_and_print_data(logits_path, 'logits', num_items)
-            # Load and print labels
-            labels_data = load_and_print_data(labels_path, 'labels', num_items)
-            # Load and print keep
-            keep_data = load_and_print_data(keep_path, 'keep', num_items)
-            # Load and print scores
-            scores_data = load_and_print_data(scores_path, 'scores', num_items)
-            if scores_data is not None:
-                if data_type == 'clean':
-                    clean_scores.append(scores_data)
-                else:
-                    poisoned_scores.append(scores_data)
-            
+            # Load data
+            scores_data = load_data(scores_path)
+            logits_data = load_data(logits_path)
+            labels_data = load_data(labels_path)
+            keep_data = load_data(keep_path)
 
+            if scores_data is None or logits_data is None or labels_data is None or keep_data is None:
+                continue
 
-    # Compute the overall average scores for clean and poisoned
-    if clean_scores:
-        clean_scores = np.concatenate(clean_scores, axis=0)
-        clean_avg = np.mean(clean_scores)
-        print(f"Overall average score for 'clean': {clean_avg}")
-    if poisoned_scores:
-        poisoned_scores = np.concatenate(poisoned_scores, axis=0)
-        poisoned_avg = np.mean(poisoned_scores)
-        print(f"Overall average score for 'poisoned': {poisoned_avg}")
+            print(f"Data from {shadow_id} ({data_type}):")
+            print_filtered_data(scores_data, logits_data, labels_data, keep_data, num_items)
 
 if __name__ == "__main__":
     main()

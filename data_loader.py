@@ -4,6 +4,14 @@ from pathlib import Path
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
+from torch.utils.data import Subset
+
+class LabeledSubset(Subset):
+    """Subset with a targets attribute."""
+    def __init__(self, dataset, indices):
+        super().__init__(dataset, indices)
+        self.targets = [dataset.targets[i] for i in indices]
+
 
 def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
     if seed is None:
@@ -29,6 +37,7 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
     
     # Compute the IN / OUT subset
     size = len(train_ds)
+    keep_bool = np.full((size), False)
     if n_shadows is not None:
         np.random.seed(0)
         keep = np.random.uniform(0, 1, size=(n_shadows, size))
@@ -39,11 +48,13 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
     else:
         keep = np.random.choice(size, size=int(pkeep * size), replace=False)
         keep.sort()
-    keep_bool = np.full((size), False)
+    
     keep_bool[keep] = True
 
-    train_ds = Subset(train_ds, keep)
-    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
+    reduced_train_ds = LabeledSubset(train_ds, keep)
+    full_train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=4)
+    reduced_train_dl = DataLoader(reduced_train_ds, batch_size=batch_size, shuffle=False, num_workers=4)
     test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)
     
-    return train_dl, test_dl, keep_bool
+    return full_train_dl, reduced_train_dl, test_dl, keep_bool
+

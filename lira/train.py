@@ -40,8 +40,6 @@ def train(args, train_dl, test_dl, keep_bool, DEVICE, data_type):
     optim = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=args.epochs)
 
-    all_train_labels = []  # List to collect all labels
-
     # 训练过程
     for i in range(args.epochs):
         model.train()
@@ -49,9 +47,6 @@ def train(args, train_dl, test_dl, keep_bool, DEVICE, data_type):
         pbar = tqdm(train_dl)
         for itr, (x, y) in enumerate(pbar):
             x, y = x.to(DEVICE), y.to(DEVICE)
-
-            if i == 0:  # Only collect labels in the first epoch to avoid duplicates
-                all_train_labels.extend(y.cpu().numpy())
 
             loss = F.cross_entropy(model(x), y)
             loss_total += loss
@@ -72,7 +67,6 @@ def train(args, train_dl, test_dl, keep_bool, DEVICE, data_type):
     savedir = os.path.join(args.savedir, str(args.shadow_id), data_type)
     os.makedirs(savedir, exist_ok=True)
     np.save(os.path.join(savedir, "keep.npy"), keep_bool)
-    np.save(os.path.join(savedir, "labels.npy"), np.array(all_train_labels))  # Save labels as .npy file
     torch.save(model.state_dict(), os.path.join(savedir, "model.pt"))
 
 

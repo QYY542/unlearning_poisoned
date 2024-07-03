@@ -1,5 +1,9 @@
 import numpy as np
 import os
+from pathlib import Path
+from torchvision.datasets import CIFAR10
+from tqdm import tqdm
+
 
 def score(args, data_loader, data_type):
     savedir = os.path.join(args.savedir, str(args.shadow_id), data_type)
@@ -31,7 +35,4 @@ def score(args, data_loader, data_type):
     print(f"Scores saved to {score_path}")
 
 def get_labels(data_loader):
-    labels = []
-    for _, y in data_loader:
-        labels.extend(y.numpy())
-    return np.array(labels)
+    return np.array(data_loader.dataset.targets)
