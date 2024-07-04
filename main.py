@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--repeat_num", default=10, type=int)
     parser.add_argument("--poison_method", default="first", type=str, choices=["random", "first"])
     parser.add_argument("--use_original_label", action="store_true")
-    parser.add_argument("--n_queries", default=2, type=int)
+    parser.add_argument("--n_queries", default=1, type=int)
     args = parser.parse_args()
 
     # 设置全局变量POISON_METHOD

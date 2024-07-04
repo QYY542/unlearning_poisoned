@@ -20,8 +20,8 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
     
     # Data transformations
     train_transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(32, padding=4),
+        # transforms.RandomHorizontalFlip(),
+        # transforms.RandomCrop(32, padding=4),
         transforms.ToTensor(),
         transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2470, 0.2435, 0.2616]),
     ])
@@ -36,20 +36,29 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
     test_ds = CIFAR10(root=datadir, train=False, download=True, transform=test_transform)
     
     # Compute the IN / OUT subset
+    # 不要随机生成以保留固定的样本训练影子模型
+    # size = len(train_ds)
+    # keep_bool = np.full((size), False)
+    # if n_shadows is not None:
+    #     np.random.seed(0)
+    #     keep = np.random.uniform(0, 1, size=(n_shadows, size))
+    #     order = keep.argsort(0)
+    #     keep = order < int(pkeep * n_shadows)
+    #     keep = np.array(keep[shadow_id], dtype=bool)
+    #     keep = keep.nonzero()[0]
+    # else:
+    #     keep = np.random.choice(size, size=int(pkeep * size), replace=False)
+    #     keep.sort()
+    # keep_bool[keep] = True
+
     size = len(train_ds)
     keep_bool = np.full((size), False)
-    if n_shadows is not None:
-        np.random.seed(0)
-        keep = np.random.uniform(0, 1, size=(n_shadows, size))
-        order = keep.argsort(0)
-        keep = order < int(pkeep * n_shadows)
-        keep = np.array(keep[shadow_id], dtype=bool)
-        keep = keep.nonzero()[0]
-    else:
-        keep = np.random.choice(size, size=int(pkeep * size), replace=False)
-        keep.sort()
-    
-    keep_bool[keep] = True
+
+    keep_file = Path("save/keep.npy")
+    if keep_file.exists():
+        keep_bool = np.load(keep_file)
+
+    keep = np.where(keep_bool)[0]
 
     reduced_train_ds = LabeledSubset(train_ds, keep)
     full_train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=4)
