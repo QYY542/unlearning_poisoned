@@ -50,6 +50,7 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
     #     keep = np.random.choice(size, size=int(pkeep * size), replace=False)
     #     keep.sort()
     # keep_bool[keep] = True
+    # np.save(os.path.join(savedir, "keep.npy"), keep_bool)
 
     size = len(train_ds)
     keep_bool = np.full((size), False)
@@ -65,5 +66,5 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
     reduced_train_dl = DataLoader(reduced_train_ds, batch_size=batch_size, shuffle=False, num_workers=4)
     test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)
     
-    return full_train_dl, reduced_train_dl, test_dl, keep_bool
+    return full_train_dl, reduced_train_dl, test_dl
 

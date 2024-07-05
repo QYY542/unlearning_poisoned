@@ -21,7 +21,7 @@ from tqdm import tqdm
 
 from lira.wide_resnet import WideResNet
 
-def train(args, train_dl, test_dl, keep_bool, DEVICE, data_type):
+def train(args, train_dl, test_dl, DEVICE, data_type):
     args.debug = True
     wandb.init(project="lira", mode="disabled" if args.debug else "online")
     # 初始化模型
@@ -66,7 +66,7 @@ def train(args, train_dl, test_dl, keep_bool, DEVICE, data_type):
 
     savedir = os.path.join(args.savedir, str(args.shadow_id), data_type)
     os.makedirs(savedir, exist_ok=True)
-    np.save(os.path.join(savedir, "keep.npy"), keep_bool)
+    # np.save(os.path.join(savedir, "keep.npy"), keep_bool)
     torch.save(model.state_dict(), os.path.join(savedir, "model.pt"))
 
 

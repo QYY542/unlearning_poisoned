@@ -6,9 +6,3 @@ python main.py --epochs 50 --n_shadows 8 --shadow_id 4 --model resnet18 --pkeep 
 python main.py --epochs 50 --n_shadows 8 --shadow_id 5 --model resnet18 --pkeep 0.5 --savedir exp/cifar10/fixed_label --poison_type fixed_label --num_to_poison 5 --repeat_num 100 --fixed_label 0 --use_original_label
 python main.py --epochs 50 --n_shadows 8 --shadow_id 6 --model resnet18 --pkeep 0.5 --savedir exp/cifar10/fixed_label --poison_type fixed_label --num_to_poison 5 --repeat_num 100 --fixed_label 0 --use_original_label
 python main.py --epochs 50 --n_shadows 8 --shadow_id 7 --model resnet18 --pkeep 0.5 --savedir exp/cifar10/fixed_label --poison_type fixed_label --num_to_poison 5 --repeat_num 100 --fixed_label 0 --use_original_label
-
-python plot.py --savedir exp/cifar10/fixed_label --sample_index 0
-python plot.py --savedir exp/cifar10/fixed_label --sample_index 1
-python plot.py --savedir exp/cifar10/fixed_label --sample_index 2
-python plot.py --savedir exp/cifar10/fixed_label --sample_index 3
-python plot.py --savedir exp/cifar10/fixed_label --sample_index 4

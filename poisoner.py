@@ -2,6 +2,7 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Subset, ConcatDataset
+from lira.utils import CustomDataset
 
 POISON_METHOD = "first"  # 默认投毒方法
 
@@ -12,17 +13,22 @@ class Poisoner:
         self.reduced_train_dl = reduced_train_dl
         self.repeat_num = repeat_num
         self.poisoned_data = []
+        self.poison_indices = [] 
 
+    # 总共投放num_to_poison个标签0到9的投毒数据
     def poison_random_uniform(self, num_to_poison):
         poison_indices = self._select_indices(num_to_poison)
         print(f'poison_indices:{poison_indices}')
-        for idx in poison_indices:
-            for _ in range(self.repeat_num):
+        num_per_label = self.repeat_num // 10  
+        for label in range(10):  # 对每个标签进行操作
+            for idx in poison_indices:
                 data, _ = self.reduced_train_dl.dataset[idx]
-                random_label = np.random.randint(0, 10)  # 随机均匀标签
-                self.poisoned_data.append((data, random_label))
+                # 每个标签添加指定次数的投毒样本
+                for _ in range(num_per_label):
+                    self.poisoned_data.append((data, label))  # 使用当前的label而不是随机标签
         self._apply_poison()
 
+    # 投放num_to_poison个original_label的投毒数据
     def poison_fixed_label(self, num_to_poison, fixed_label, use_original_label=False):
         poison_indices = self._select_indices(num_to_poison)
         print(f'poison_indices:{poison_indices}')
@@ -39,14 +45,17 @@ class Poisoner:
     def poison_flipped_and_fixed_labels(self, num_to_poison, fixed_label, use_original_label=False):
         poison_indices = self._select_indices(num_to_poison)
         print(f'poison_indices:{poison_indices}')
-        # 插入标签翻转的样本
-        for idx in poison_indices:
-            for _ in range(self.repeat_num):
-                data, current_label = self.reduced_train_dl.dataset[idx]
-                flipped_label = (current_label + 1) % 10  # 简单标签翻转
-                self.poisoned_data.append((data, flipped_label))
 
-        # 插入带有固定标签的样本
+        # y' != y
+        num_per_label = self.repeat_num // 10  
+        for label in range(10): 
+            for idx in poison_indices:
+                data, original_label = self.reduced_train_dl.dataset[idx]
+                if label != original_label:
+                    for _ in range(num_per_label):
+                        self.poisoned_data.append((data, label)) 
+
+        # y' == y
         for idx in poison_indices:
             for _ in range(self.repeat_num):
                 data, original_label = self.reduced_train_dl.dataset[idx]
@@ -55,15 +64,17 @@ class Poisoner:
                 else:
                     label = fixed_label
                 self.poisoned_data.append((data, label))
-        
+                
         self._apply_poison()
 
     def _select_indices(self, num_to_select):
         all_indices = np.arange(len(self.reduced_train_dl.dataset))
         if POISON_METHOD == "random":
             np.random.shuffle(all_indices)
+            self.poison_indices = all_indices[:num_to_select]
             return all_indices[:num_to_select]
         elif POISON_METHOD == "first":
+            self.poison_indices = all_indices[:num_to_select]
             return all_indices[:num_to_select]
         
     def _apply_poison(self):
@@ -85,16 +96,9 @@ class Poisoner:
 
     def get_poisoned_data_loader(self):
         return self.poisoned_full_dl, self.poisoned_reduced_dl
+    
+    def get_poisoned_indices(self):
+        return self.poison_indices
 
-class CustomDataset(torch.utils.data.Dataset):
-    def __init__(self, data):
-        self.data = data
-        self.targets = [label for _, label in data]
 
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        image, label = self.data[idx]
-        return image, label
     
