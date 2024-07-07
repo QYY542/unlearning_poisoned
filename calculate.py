@@ -8,7 +8,7 @@ def calculate_probability(scores):
 
 # 解析命令行参数
 parser = argparse.ArgumentParser()
-parser.add_argument("--poison_type", default="fixed_label", type=str, choices=["random_uniform", "fixed_label", "flipped_label"])
+parser.add_argument("--poison_type", default="flipped_label", type=str, choices=["random_uniform", "fixed_label", "flipped_label"])
 parser.add_argument("--sample_index", type=int, default=0, help="Index of the sample to extract scores for")
 args = parser.parse_args()
 savedir = os.path.join("exp/cifar10", args.poison_type)

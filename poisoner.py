@@ -20,22 +20,22 @@ class Poisoner:
         poison_indices = self._select_indices(num_to_poison)
         print(f'poison_indices:{poison_indices}')
         num_per_label = self.repeat_num // 10  
-        for label in range(10):  # 对每个标签进行操作
-            for idx in poison_indices:
-                data, _ = self.reduced_train_dl.dataset[idx]
-                # 每个标签添加指定次数的投毒样本
+        for idx in poison_indices:
+            for label in range(10): 
                 for _ in range(num_per_label):
-                    self.poisoned_data.append((data, label))  # 使用当前的label而不是随机标签
+                    data, _ = self.reduced_train_dl.dataset[idx]
+                    self.poisoned_data.append((data, label)) 
         self._apply_poison()
 
     # 投放num_to_poison个original_label的投毒数据
     def poison_fixed_label(self, num_to_poison, fixed_label, use_original_label=False):
         poison_indices = self._select_indices(num_to_poison)
         print(f'poison_indices:{poison_indices}')
+
         for idx in poison_indices:
             for _ in range(self.repeat_num):
                 data, original_label = self.reduced_train_dl.dataset[idx]
-                if use_original_label and original_label != fixed_label:
+                if use_original_label:
                     label = original_label
                 else:
                     label = fixed_label
@@ -48,18 +48,18 @@ class Poisoner:
 
         # y' != y
         num_per_label = self.repeat_num // 10  
-        for label in range(10): 
-            for idx in poison_indices:
-                data, original_label = self.reduced_train_dl.dataset[idx]
-                if label != original_label:
-                    for _ in range(num_per_label):
+        for idx in poison_indices:
+            for label in range(10): 
+                for _ in range(num_per_label):
+                    data, original_label = self.reduced_train_dl.dataset[idx]
+                    if label != original_label:
                         self.poisoned_data.append((data, label)) 
 
         # y' == y
         for idx in poison_indices:
             for _ in range(self.repeat_num):
                 data, original_label = self.reduced_train_dl.dataset[idx]
-                if use_original_label and original_label != fixed_label:
+                if use_original_label:
                     label = original_label
                 else:
                     label = fixed_label
