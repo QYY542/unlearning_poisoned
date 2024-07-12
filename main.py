@@ -6,6 +6,7 @@ import torch
 import wandb
 from torch.utils.data import DataLoader, Subset
 from data_loader import get_data_loaders
+from unlearner import unlearn_finetune
 from poisoner import Poisoner  # 导入Poisoner类和全局变量
 from lira.train import train  # 引入 train函数
 from lira.inference import inference  # 引入 inference 函数
@@ -45,12 +46,18 @@ def main():
     parser.add_argument("--repeat_num", default=10, type=int)
     parser.add_argument("--use_original_label", action="store_true")
     parser.add_argument("--n_queries", default=1, type=int)
+    parser.add_argument('--finetune_epochs', default=30, type=int, help='number of finetuning epochs')
+    parser.add_argument('--loss_func', default='regular', type=str, help='loss function: regular,hessian, hessianv2, std_loss')
+    parser.add_argument('--l2_regularizer', default=0.0, type=float, help='L2 regularizer value')
+    parser.add_argument('--regularizer', default=0.0, type=float, help='regularizer value')
+    parser.add_argument('--eval_every', default=5, type=int, help='eval every N steps')
     args = parser.parse_args()
 
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # seed = np.random.randint(0, 1000000000)
     # seed ^= int(time.time())
+    print(f'======= Shadow Model {args.shadow_id} =======')
     seed = 510
     np.random.seed(seed)
 
@@ -94,6 +101,7 @@ def main():
     print(reduced_dl.dataset.targets[:10])
     # print(reduced_dl.dataset.targets[-10:])
     train(args, savedir, reduced_dl, test_dl, DEVICE, "clean")
+    # unlearn_finetune(args, savedir, reduced_dl, test_dl, DEVICE, "clean")
     inference(args, savedir, reduced_dl, DEVICE, "clean")
     score(args, savedir, reduced_dl, "clean") 
 
