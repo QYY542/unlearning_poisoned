@@ -21,9 +21,11 @@ from tqdm import tqdm
 
 from lira.wide_resnet import WideResNet
 
-def train(args, train_dl, test_dl, DEVICE, data_type):
+def train(args, savedir, train_dl, test_dl, DEVICE, data_type):
     args.debug = True
     wandb.init(project="lira", mode="disabled" if args.debug else "online")
+    savedir = os.path.join(savedir, data_type)
+    
     # 初始化模型
     if args.model == "wresnet28-2":
         model = WideResNet(28, 2, 0.0, 10)
@@ -64,7 +66,6 @@ def train(args, train_dl, test_dl, DEVICE, data_type):
     print(f"[test] acc_test: {get_acc(model, test_dl, DEVICE):.4f}")
     wandb.log({"acc_test": get_acc(model, test_dl, DEVICE)})
 
-    savedir = os.path.join(args.savedir, str(args.shadow_id), data_type)
     os.makedirs(savedir, exist_ok=True)
     # np.save(os.path.join(savedir, "keep.npy"), keep_bool)
     torch.save(model.state_dict(), os.path.join(savedir, "model.pt"))

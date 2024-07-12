@@ -8,22 +8,14 @@ def calculate_probability(scores):
 
 # 解析命令行参数
 parser = argparse.ArgumentParser()
-parser.add_argument("--poison_type", default="flipped_label", type=str, choices=["random_uniform", "fixed_label", "flipped_label"])
-parser.add_argument("--sample_index", type=int, default=0, help="Index of the sample to extract scores for")
+parser.add_argument("--poison_type", default="random_uniform", type=str, choices=["random_uniform", "fixed_label", "flipped_label"])
+parser.add_argument("--target_sample", type=int, default=0, help="Index of the sample to extract scores for")
+parser.add_argument("--model", default="resnet18", type=str)
 args = parser.parse_args()
-savedir = os.path.join("exp/cifar10", args.poison_type)
+savedir = os.path.join("exp/cifar10/", args.model, args.poison_type, str(f'target_sample_{args.target_sample}'))
 
 # 读取 keep.npy 文件以作为索引指南
-keep_path = 'save/keep.npy'
-if not os.path.exists(keep_path):
-    print("Error: keep.npy file not found.")
-    exit()
-keep_mask = np.load(keep_path)
-true_indices = np.where(keep_mask)[0]
-if args.sample_index >= len(true_indices):
-    print(f"Error: sample_index {args.sample_index} is out of range for the filtered dataset")
-    exit()
-real_index = true_indices[args.sample_index]
+target_index = args.target_sample
 
 # 初始化存储分数的字典
 scores_dict = {'S1': [], 'S2': [], 'S3': [], 'D': []}
@@ -45,9 +37,10 @@ for shadow_id in os.listdir(savedir):
             dataset_key = dataset_mapping[data_type]  # 确定属于哪个数据集
             if os.path.exists(scores_path):
                 scores = np.load(scores_path)
-                if real_index < len(scores):
-                    score = scores[real_index]
-                    scores_dict[dataset_key].append(score)
+                # print(f'scores len:{len(scores)}')
+                score = scores[target_index]
+                print(f'{data_type}:{score}')
+                scores_dict[dataset_key].append(score)
 
 # 计算概率
 P_S1 = calculate_probability(scores_dict['S1'])

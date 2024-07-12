@@ -12,7 +12,9 @@ from tqdm import tqdm
 from lira.wide_resnet import WideResNet  # 确保路径正确，或根据你的项目结构调整
 
 @torch.no_grad()
-def inference(args, train_dl, device, data_type):
+def inference(args, savedir, train_dl, device, data_type):
+    savedir = os.path.join(savedir, data_type)
+
     if args.model == "wresnet28-2":
         model = WideResNet(28, 2, 0.0, 10)
     elif args.model == "wresnet28-10":
@@ -25,32 +27,25 @@ def inference(args, train_dl, device, data_type):
         raise NotImplementedError
 
     # Build the model path using the shadow_id
-    model_path = os.path.join(args.savedir, str(args.shadow_id), data_type, "model.pt")
+    model_path = os.path.join(savedir, "model.pt")
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path))
         model.to(device)
         model.eval()
 
         logits_n = []
-        all_labels = []
         for _ in range(args.n_queries):
             logits = []
             # 每次取出x都会应用data_loader中的train_transform对原数据进行裁剪变形
-            for x, y in tqdm(train_dl):
+            for x, _ in tqdm(train_dl):
                 x = x.to(device)
                 outputs = model(x)
                 logits.append(outputs.cpu().numpy())
-                all_labels.append(y.numpy())  # Collect labels here
             logits_n.append(np.concatenate(logits))
         logits_n = np.stack(logits_n, axis=1)
 
-        logits_path = os.path.join(args.savedir, str(args.shadow_id), data_type, "logits.npy")
+        logits_path = os.path.join(savedir, "logits.npy")
         np.save(logits_path, logits_n)
         print(f"Logits saved to {logits_path}")
-
-        # Save labels
-        labels_path = os.path.join(args.savedir, str(args.shadow_id), data_type, "labels.npy")
-        np.save(labels_path, np.concatenate(all_labels))
-        print(f"Labels saved to {labels_path}")
     else:
         print(f"Model not found in {model_path}")

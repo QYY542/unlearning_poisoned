@@ -5,8 +5,8 @@ from torchvision.datasets import CIFAR10
 from tqdm import tqdm
 
 
-def score(args, data_loader, data_type):
-    savedir = os.path.join(args.savedir, str(args.shadow_id), data_type)
+def score(args, savedir, data_loader, data_type):
+    savedir = os.path.join(savedir, data_type)
     logits_path = os.path.join(savedir, "logits.npy")
     
     if not os.path.exists(logits_path):

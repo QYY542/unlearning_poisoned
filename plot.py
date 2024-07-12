@@ -11,22 +11,14 @@ def find_tpr_at_fpr(fpr, tpr, target_fpr=0.001):
 
 # 解析命令行参数
 parser = argparse.ArgumentParser()
-parser.add_argument("--poison_type", default="flipped_label", type=str, choices=["random_uniform", "fixed_label", "flipped_label"])
-parser.add_argument("--sample_index", type=int, default=0, help="Index of the sample to extract scores for")
+parser.add_argument("--poison_type", default="random_uniform", type=str, choices=["random_uniform", "fixed_label", "flipped_label"])
+parser.add_argument("--target_sample", type=int, default=0, help="Index of the sample to extract scores for")
+parser.add_argument("--model", default="resnet18", type=str)
 args = parser.parse_args()
-savedir = os.path.join("exp/cifar10", args.poison_type)
+savedir = os.path.join("exp/cifar10/", args.model, args.poison_type, str(f'target_sample_{args.target_sample}'))
 
 # 读取 keep.npy 文件以作为索引指南
-keep_path = 'save/keep.npy'
-if not os.path.exists(keep_path):
-    print("Error: keep.npy file not found.")
-    exit()
-keep_mask = np.load(keep_path)
-true_indices = np.where(keep_mask)[0]
-if args.sample_index >= len(true_indices):
-    print(f"Error: sample_index {args.sample_index} is out of range for the filtered dataset")
-    exit()
-real_index = true_indices[args.sample_index]
+target_index = args.target_sample
 
 # 初始化分数和标签列表
 clean_scores = []
@@ -42,14 +34,14 @@ for shadow_id in os.listdir(savedir):
             scores_path = os.path.join(shadow_dir, data_type, 'scores.npy')
             if os.path.exists(scores_path):
                 scores = np.load(scores_path)
-                if real_index < len(scores):
-                    score = scores[real_index]
-                    if 'clean' in data_type:
-                        clean_scores.append(score)
-                        clean_labels.append(1 if data_type == 'clean' else 0)
-                    elif 'poisoned' in data_type:
-                        poisoned_scores.append(score)
-                        poisoned_labels.append(1 if data_type == 'poisoned' else 0)
+                # print(f'scores len:{len(scores)}')
+                score = scores[target_index]
+                if 'clean' in data_type:
+                    clean_scores.append(score)
+                    clean_labels.append(1 if data_type == 'clean' else 0)
+                elif 'poisoned' in data_type:
+                    poisoned_scores.append(score)
+                    poisoned_labels.append(1 if data_type == 'poisoned' else 0)
 
 # 计算和绘制ROC曲线
 plt.figure()
@@ -64,6 +56,10 @@ fpr_poisoned, tpr_poisoned, _ = roc_curve(poisoned_labels, poisoned_scores)
 roc_auc_poisoned = auc(fpr_poisoned, tpr_poisoned)
 plt.plot(fpr_poisoned, tpr_poisoned, label=f'Poisoned vs Poisoned Removed (area = {roc_auc_poisoned:.2f})')
 
+directory = f'save/{args.model}/{args.poison_type}/'
+if not os.path.exists(directory):
+    os.makedirs(directory)
+
 # 绘图设置
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
 plt.xlim([0.0, 1.0])
@@ -72,7 +68,7 @@ plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.title('ROC Curves for Clean and Poisoned Samples')
 plt.legend(loc="lower right")
-plt.savefig(f'save/{args.poison_type}/roc_curves_{args.poison_type}_{args.sample_index}.png')
+plt.savefig(f'{directory}/roc_curves_{args.poison_type}_{args.target_sample}.png')
 plt.show()
 plt.close()
 
