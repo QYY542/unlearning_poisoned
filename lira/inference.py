@@ -13,8 +13,6 @@ from lira.wide_resnet import WideResNet  # 确保路径正确，或根据你的�
 
 @torch.no_grad()
 def inference(args, savedir, train_dl, device, data_type):
-    savedir = os.path.join(savedir, data_type)
-
     if args.model == "wresnet28-2":
         model = WideResNet(28, 2, 0.0, 10)
     elif args.model == "wresnet28-10":
@@ -27,6 +25,7 @@ def inference(args, savedir, train_dl, device, data_type):
         raise NotImplementedError
 
     # Build the model path using the shadow_id
+    savedir = os.path.join(savedir, data_type)
     model_path = os.path.join(savedir, "model.pt")
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path))

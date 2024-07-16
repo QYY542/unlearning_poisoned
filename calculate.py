@@ -39,7 +39,7 @@ for shadow_id in os.listdir(savedir):
                 scores = np.load(scores_path)
                 # print(f'scores len:{len(scores)}')
                 score = scores[target_index]
-                print(f'{data_type}:{score}')
+                # print(f'{data_type}:{score}')
                 scores_dict[dataset_key].append(score)
 
 # 计算概率

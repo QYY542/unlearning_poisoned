@@ -1,8 +1,3 @@
-# PyTorch implementation of
-# https://github.com/tensorflow/privacy/blob/master/research/mi_lira_2021/train.py
-#
-# author: Chenxiang Zhang (orientino)
-
 import argparse
 import os
 import time
@@ -14,7 +9,7 @@ import torch
 import wandb
 from torch import nn
 from torch.nn import functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split, Subset
 from torchvision import models, transforms
 from torchvision.datasets import CIFAR10
 from tqdm import tqdm
@@ -24,7 +19,7 @@ from lira.wide_resnet import WideResNet
 def train(args, savedir, train_dl, test_dl, DEVICE, data_type):
     args.debug = True
     wandb.init(project="lira", mode="disabled" if args.debug else "online")
-    savedir = os.path.join(savedir, data_type)
+
     
     # 初始化模型
     if args.model == "wresnet28-2":
@@ -42,11 +37,15 @@ def train(args, savedir, train_dl, test_dl, DEVICE, data_type):
     optim = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=args.epochs)
 
+    # 设置DataLoader并启用shuffle
+    train_dl = DataLoader(train_dl.dataset, batch_size=128, shuffle=True, num_workers=4)
+
     # 训练过程
     for i in range(args.epochs):
         model.train()
         loss_total = 0
         pbar = tqdm(train_dl)
+        
         for itr, (x, y) in enumerate(pbar):
             x, y = x.to(DEVICE), y.to(DEVICE)
 
@@ -66,8 +65,8 @@ def train(args, savedir, train_dl, test_dl, DEVICE, data_type):
     print(f"[test] acc_test: {get_acc(model, test_dl, DEVICE):.4f}")
     wandb.log({"acc_test": get_acc(model, test_dl, DEVICE)})
 
+    savedir = os.path.join(savedir, data_type)
     os.makedirs(savedir, exist_ok=True)
-    # np.save(os.path.join(savedir, "keep.npy"), keep_bool)
     torch.save(model.state_dict(), os.path.join(savedir, "model.pt"))
 
 
