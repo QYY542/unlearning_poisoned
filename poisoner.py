@@ -80,9 +80,10 @@ class Poisoner:
         
         # self.poisoned_full_dl = DataLoader(self.poisoned_full_dataset, batch_size=self.full_train_dl.batch_size, shuffle=False, num_workers=4)
         self.poisoned_reduced_dl = DataLoader(self.poisoned_reduced_dataset, batch_size=self.reduced_train_dl.batch_size, shuffle=False, num_workers=4)
+        self.poisoned_dl = DataLoader(poisoned_dataset, batch_size=self.reduced_train_dl.batch_size, shuffle=False, num_workers=4)
 
     def get_poisoned_data_loader(self):
-        return self.poisoned_reduced_dl
+        return self.poisoned_reduced_dl, self.poisoned_dl
     
     def get_poisoned_indices(self):
         return self.poison_indices

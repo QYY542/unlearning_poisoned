@@ -6,7 +6,7 @@ import torch
 import wandb
 from torch.utils.data import DataLoader, Subset
 from data_loader import get_data_loaders
-from unlearner import unlearn_finetune
+from unlearner import unlearn_unrolling_sgd
 from poisoner import Poisoner  # 导入Poisoner类和全局变量
 from lira.train import train  # 引入 train函数
 from lira.inference import inference  # 引入 inference 函数
@@ -50,7 +50,7 @@ def main():
     parser.add_argument('--loss_func', default='regular', type=str, help='loss function: regular,hessian, hessianv2, std_loss')
     parser.add_argument('--l2_regularizer', default=0.0, type=float, help='L2 regularizer value')
     parser.add_argument('--regularizer', default=0.0, type=float, help='regularizer value')
-    parser.add_argument('--eval_every', default=5, type=int, help='eval every N steps')
+    parser.add_argument('--eval_every', default=50, type=int, help='eval every N steps')
     args = parser.parse_args()
 
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -77,10 +77,10 @@ def main():
         poisoner.poison_flipped_and_fixed_labels(args.fixed_label, args.use_original_label)
 
     # 获取投毒后的数据加载器
-    poisoned_reduced_dl = poisoner.get_poisoned_data_loader()
+    poisoned_reduced_dl, unlearned_dl = poisoner.get_poisoned_data_loader()
 
     # 投毒数据集
-    print(f"Size of poisoned train_dl: {len(poisoned_reduced_dl.dataset)}")
+    print(f"=== Size of poisoned train_dl: {len(poisoned_reduced_dl.dataset)}")
     print(poisoned_reduced_dl.dataset.targets[:10])
     # print(poisoned_reduced_dl.dataset.targets[-10:])
     train(args, savedir, poisoned_reduced_dl, test_dl, DEVICE, "poisoned")
@@ -89,7 +89,7 @@ def main():
 
     # 投毒后删除目标样本
     poisoned_reduced_removed_dl = remove_samples(poisoned_reduced_dl, args.target_sample)
-    print(f"Size of poisoned removed train_dl: {len(poisoned_reduced_removed_dl.dataset)}")
+    print(f"=== Size of poisoned removed train_dl: {len(poisoned_reduced_removed_dl.dataset)}")
     print(poisoned_reduced_removed_dl.dataset.targets[:10])
     # print(poisoned_reduced_removed_dl.dataset.targets[-10:])
     train(args, savedir, poisoned_reduced_removed_dl, test_dl, DEVICE, "poisoned_removed")
@@ -97,17 +97,17 @@ def main():
     score(args, savedir, poisoned_reduced_removed_dl, "poisoned_removed") 
 
     # 原始数据集
-    print(f"Size of clean train_dl: {len(reduced_dl.dataset)}")
+    print(f"=== Size of clean train_dl: {len(reduced_dl.dataset)}")
     print(reduced_dl.dataset.targets[:10])
     # print(reduced_dl.dataset.targets[-10:])
-    train(args, savedir, reduced_dl, test_dl, DEVICE, "clean")
-    # unlearn_finetune(args, savedir, reduced_dl, test_dl, DEVICE, "clean")
+    # train(args, savedir, reduced_dl, test_dl, DEVICE, "clean")
+    unlearn_unrolling_sgd(args, savedir, unlearned_dl, test_dl, DEVICE, "clean")
     inference(args, savedir, reduced_dl, DEVICE, "clean")
     score(args, savedir, reduced_dl, "clean") 
 
     # 删除目标样本
     reduced_removed_dl = remove_samples(reduced_dl, args.target_sample)
-    print(f"Size of clean removed train_dl: {len(reduced_removed_dl.dataset)}")
+    print(f"=== Size of clean removed train_dl: {len(reduced_removed_dl.dataset)}")
     print(reduced_removed_dl.dataset.targets[:10])
     # print(reduced_removed_dl.dataset.targets[-10:])
     train(args, savedir, reduced_removed_dl, test_dl, DEVICE, "clean_removed")
