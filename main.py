@@ -13,22 +13,11 @@ from lira.inference import inference  # 引入 inference 函数
 from lira.score import score # 引入 score 函数
 from lira.utils import CustomDataset
 
-def remove_samples(data_loader, target_sample):
-    original_data = data_loader.dataset
-    removed_data = [data for idx, data in enumerate(original_data) if idx != target_sample]
+def remove_samples(dataset, target_sample):
+    removed_data = [data for idx, data in enumerate(dataset) if idx != target_sample]
     removed_dataset = CustomDataset(removed_data)
 
-    batch_size = data_loader.batch_size
-    num_workers = data_loader.num_workers
-
-    removed_data_loader = DataLoader(
-        removed_dataset,
-        batch_size=batch_size,
-        shuffle=False,  
-        num_workers=num_workers
-    )
-
-    return removed_data_loader
+    return removed_dataset
 
 def main():
     parser = argparse.ArgumentParser()
@@ -62,10 +51,10 @@ def main():
     np.random.seed(seed)
 
     savedir = os.path.join(args.savedir, args.model,args.poison_type, str(f'target_sample_{args.target_sample}'), str(args.shadow_id))
-    train_dl, test_dl = get_data_loaders(args.pkeep, args.shadow_id, args.n_shadows, seed=seed)
+    train_ds, test_dl = get_data_loaders(args.pkeep, args.shadow_id, args.n_shadows, seed=seed)
 
     # 创建Poisoner实例并应用投毒方法
-    poisoner = Poisoner(args, train_dl, repeat_num=args.repeat_num)
+    poisoner = Poisoner(args, train_ds, repeat_num=args.repeat_num)
     if args.poison_type == "random_uniform":
         print("poison_type: random_uniform")
         poisoner.poison_random_uniform()
@@ -77,35 +66,46 @@ def main():
         poisoner.poison_flipped_and_fixed_labels(args.fixed_label, args.use_original_label)
 
     # 获取投毒后的数据加载器
-    poisoned_train_dl, unlearned_dl = poisoner.get_poisoned_data_loader()
+    poisoned_train_ds, unlearn_dl = poisoner.get_poisoned_data_loader()
 
-    # 投毒数据集
-    print(f"=== Size of poisoned train_dl: {len(poisoned_train_dl.dataset)}")
-    train(args, savedir, poisoned_train_dl, test_dl, DEVICE, "poisoned")
-    inference(args, savedir, poisoned_train_dl, DEVICE, "poisoned")
-    score(args, savedir, poisoned_train_dl, "poisoned") 
+    # =========== 投毒数据集
+    print(f"=== Size of poisoned train_dl: {len(poisoned_train_ds)}")
+    print(poisoned_train_ds.targets[:10])
+    train(args, savedir, poisoned_train_ds, test_dl, DEVICE, "poisoned")
+    inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned")
+    score(args, savedir, poisoned_train_ds, "poisoned") 
 
-    # 投毒后删除目标样本
-    poisoned_train_removed_dl = remove_samples(poisoned_train_dl, args.target_sample)
-    print(f"=== Size of poisoned removed train_dl: {len(poisoned_train_removed_dl.dataset)}")
-    train(args, savedir, poisoned_train_removed_dl, test_dl, DEVICE, "poisoned_removed")
-    inference(args, savedir, poisoned_train_removed_dl, DEVICE, "poisoned_removed")
-    score(args, savedir, poisoned_train_removed_dl, "poisoned_removed") 
+    poisoned_train_removed_ds = remove_samples(poisoned_train_ds, args.target_sample)
 
-    # 原始数据集
-    print(f"=== Size of clean train_dl: {len(train_dl.dataset)}")
-    # print(reduced_dl.dataset.targets[-10:])
-    # train(args, savedir, reduced_dl, test_dl, DEVICE, "clean")
-    unlearn_unrolling_sgd(args, savedir, unlearned_dl, test_dl, DEVICE, "clean")
-    inference(args, savedir, train_dl, DEVICE, "clean")
-    score(args, savedir, train_dl, "clean") 
+    print(f"=== Size of poisoned removed train_dl: {len(poisoned_train_removed_ds)}")
+    print(poisoned_train_removed_ds.targets[:10])
+    train(args, savedir, poisoned_train_removed_ds, test_dl, DEVICE, "poisoned_removed")
+    inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned_removed")
+    score(args, savedir, poisoned_train_ds, "poisoned_removed") 
 
-    # 删除目标样本
-    train_removed_dl = remove_samples(train_dl, args.target_sample)
-    print(f"=== Size of clean removed train_dl: {len(train_removed_dl.dataset)}")
-    train(args, savedir, train_removed_dl, test_dl, DEVICE, "clean_removed")
-    inference(args, savedir, train_removed_dl, DEVICE, "clean_removed")
-    score(args, savedir, train_removed_dl, "clean_removed")
+    # =========== 遗忘学习投毒数据集
+    unlearn_unrolling_sgd(args, savedir, unlearn_dl, test_dl, DEVICE, "unlearn")
+    inference(args, savedir, train_ds, DEVICE, "unlearn")
+    score(args, savedir, train_ds, "unlearn")
+
+    unlearn_unrolling_sgd(args, savedir, unlearn_dl, test_dl, DEVICE, "unlearn_removed")
+    inference(args, savedir, train_ds, DEVICE, "unlearn_removed")
+    score(args, savedir, train_ds, "unlearn_removed") 
+
+    # =========== 重训练数据集
+    print(f"=== Size of clean train_dl: {len(train_ds)}")
+    print(train_ds.targets[:10])
+    train(args, savedir, train_ds, test_dl, DEVICE, "clean")
+    inference(args, savedir, train_ds, DEVICE, "clean")
+    score(args, savedir, train_ds, "clean") 
+
+    train_removed_ds = remove_samples(train_ds, args.target_sample)
+
+    print(f"=== Size of clean removed train_dl: {len(train_removed_ds)}")
+    print(train_removed_ds.targets[:10])
+    train(args, savedir, train_removed_ds, test_dl, DEVICE, "clean_removed")
+    inference(args, savedir, train_ds, DEVICE, "clean_removed")
+    score(args, savedir, train_ds, "clean_removed")
 
 if __name__ == "__main__":
     main()

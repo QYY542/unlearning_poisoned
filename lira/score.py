@@ -3,9 +3,11 @@ import os
 from pathlib import Path
 from torchvision.datasets import CIFAR10
 from tqdm import tqdm
+from torch.utils.data import DataLoader
 
 
-def score(args, savedir, data_loader, data_type):
+def score(args, savedir, train_ds, data_type):
+    train_dl = DataLoader(train_ds, batch_size=128, shuffle=False, num_workers=4)
     savedir = os.path.join(savedir, data_type)
     logits_path = os.path.join(savedir, "logits.npy")
     
@@ -20,7 +22,7 @@ def score(args, savedir, data_loader, data_type):
     predictions = np.exp(predictions)
     predictions = predictions / np.sum(predictions, axis=-1, keepdims=True)
 
-    labels = get_labels(data_loader)
+    labels = get_labels(train_dl)
 
     COUNT = predictions.shape[0]
     y_true = predictions[np.arange(COUNT), :, labels[:COUNT]]

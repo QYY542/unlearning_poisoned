@@ -1,13 +1,20 @@
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 0 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 1 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 2 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 3 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 4 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 5 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 6 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 7 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 8 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
-# python main.py --epochs 30 --n_shadows 10 --shadow_id 9 --model resnet18 --pkeep 0.5 --savedir exp/cifar10 --poison_type flipped_label --target_sample 4 --repeat_num 200 --fixed_label 0 --use_original_label 
+#!/bin/bash
 
-python plot.py --poison_type flipped_label --target_sample 4
-python calculate.py --poison_type flipped_label --target_sample 4
+EPOCHS=20
+REPEAT_NUM=10
+TARGET_SAMPLE=4
+MODEL=resnet18
+POISON_TYPE=flipped_label
+N_SHADOWS=10
+PKEEP=0.5
+SAVEDIR=exp/cifar10
+FIXED_LABEL=0
+USE_ORIGINAL_LABEL=--use_original_label
+
+# for SHADOW_ID in {0..9}
+# do
+#     python main.py --epochs $EPOCHS --n_shadows $N_SHADOWS --shadow_id $SHADOW_ID --model $MODEL --pkeep $PKEEP --savedir $SAVEDIR --poison_type $POISON_TYPE --target_sample $TARGET_SAMPLE --repeat_num $REPEAT_NUM --fixed_label $FIXED_LABEL $USE_ORIGINAL_LABEL
+# done
+
+python plot.py --poison_type $POISON_TYPE --target_sample $TARGET_SAMPLE
+# python calculate.py --poison_type $POISON_TYPE --target_sample $TARGET_SAMPLE

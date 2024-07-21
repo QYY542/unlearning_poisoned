@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
 from torch.utils.data import Subset
+from lira.utils import CustomDataset
 
 class LabeledSubset(Subset):
     """Subset with a targets attribute."""
@@ -62,9 +63,10 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
     keep = np.where(keep_bool)[0]
 
     train_ds = LabeledSubset(train_ds, keep)
+    train_ds = CustomDataset(train_ds)
     # full_train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=4)
-    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=4)
-    test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)
+    # train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=4)
+    test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=True, num_workers=4)
     
-    return train_dl, test_dl
+    return train_ds, test_dl
 

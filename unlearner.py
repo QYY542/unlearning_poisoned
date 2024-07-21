@@ -7,6 +7,7 @@ from tqdm import tqdm
 from lira.wide_resnet import WideResNet
 from torchvision import models
 from torch import nn
+from lira.utils import approx_retraining
 
 def unlearn_unrolling_sgd(args, savedir, unlearned_loader, test_loader, device, data_type):
     # 初始化模型
@@ -23,7 +24,10 @@ def unlearn_unrolling_sgd(args, savedir, unlearned_loader, test_loader, device, 
     model = model.to(device)
 
     # 从指定目录加载原模型权重
-    poisoned_model_path = os.path.join(savedir, 'poisoned', 'model.pt')
+    if data_type == "unlearn":
+        poisoned_model_path = os.path.join(savedir, 'poisoned', 'model.pt')
+    if data_type == "unlearn_removed":
+        poisoned_model_path = os.path.join(savedir, 'poisoned_removed', 'model.pt')
     model.load_state_dict(torch.load(poisoned_model_path, map_location=device))
 
     # 获取需要遗忘数据的梯度列表
@@ -74,12 +78,63 @@ def get_acc(model, dl, device):
     acc = torch.sum(acc) / len(acc)
     return acc.item()
 
-# 示例调用
-# args 是一个包含模型和其他参数的命名空间对象
-# savedir 是保存模型的目录
-# train_loader 和 test_loader 是训练和测试数据加载器
-# unlearned_loader 是需要遗忘的数据加载器
-# device 是训练使用的设备，例如 'cuda' 或 'cpu'
-# data_type 是数据类型，例如 'CIFAR-10'
 
-# unlearn_finetune(args, savedir, train_loader, test_loader, unlearned_loader, device, data_type)
+
+
+def unlearn_order(args, savedir, train_ds, unlearned_loader, test_loader, device, data_type, order=1):
+    # 初始化模型
+    if args.model == "wresnet28-2":
+        model = WideResNet(28, 2, 0.0, 10)
+    elif args.model == "wresnet28-10":
+        model = WideResNet(28, 10, 0.3, 10)
+    elif args.model == "resnet18":
+        model = models.resnet18(weights=None, num_classes=10)
+        model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        model.maxpool = nn.Identity()
+    else:
+        raise NotImplementedError
+    model = model.to(device)
+
+    # 从指定目录加载原模型权重
+    poisoned_model_path = os.path.join(savedir, 'poisoned', 'model.pt')
+    model.load_state_dict(torch.load(poisoned_model_path, map_location=device))
+
+    # 初始化损失函数
+    criterion = nn.CrossEntropyLoss()
+
+    # 获取 unlearned_loader 中的数据
+    z_x, z_y = next(iter(unlearned_loader))
+    z_x, z_y = z_x.to(device), z_y.to(device)
+
+    # 从 train_ds 中获取目标样本
+    target_index = args.target_sample
+    z_x_delta, z_y_delta = train_ds[target_index]
+    z_x_delta, z_y_delta = z_x_delta.to(device), torch.tensor([z_y_delta]).to(device)
+
+    # 执行近似重训练
+    theta_approx, diverged = approx_retraining(model, criterion, z_x, z_y, z_x_delta, z_y_delta, order=order)
+
+    # 更新模型参数
+    with torch.no_grad():
+        for param, new_data in zip(model.parameters(), theta_approx):
+            param.data = new_data
+
+    # 保存遗忘学习后的模型
+    savedir = os.path.join(savedir, data_type)
+    os.makedirs(savedir, exist_ok=True)
+    torch.save(model.state_dict(), os.path.join(savedir, "model.pt"))
+    print(f"Model saved to {os.path.join(savedir, 'model.pt')}")
+
+    # 测试模型
+    acc_test = get_acc(model, test_loader, device)
+    print(f"[test] acc_test: {acc_test:.4f}")
+
+@torch.no_grad()
+def get_acc(model, dl, device):
+    acc = []
+    for x, y in tqdm(dl, desc="Testing model"):
+        x, y = x.to(device), y.to(device)
+        acc.append(torch.argmax(model(x), dim=1) == y)
+    acc = torch.cat(acc)
+    acc = torch.sum(acc) / len(acc)
+    return acc.item()
