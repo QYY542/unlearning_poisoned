@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import torch
 from pathlib import Path
 from torch.utils.data import DataLoader, Subset
@@ -38,20 +39,13 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
     
     # Compute the IN / OUT subset
     # 不要随机生成以保留固定的样本训练影子模型
-    # size = len(train_ds)
-    # keep_bool = np.full((size), False)
-    # if n_shadows is not None:
-    #     np.random.seed(0)
-    #     keep = np.random.uniform(0, 1, size=(n_shadows, size))
-    #     order = keep.argsort(0)
-    #     keep = order < int(pkeep * n_shadows)
-    #     keep = np.array(keep[shadow_id], dtype=bool)
-    #     keep = keep.nonzero()[0]
-    # else:
-    #     keep = np.random.choice(size, size=int(pkeep * size), replace=False)
-    #     keep.sort()
-    # keep_bool[keep] = True
-    # np.save(os.path.join(savedir, "keep.npy"), keep_bool)
+    size = len(train_ds)
+    keep_bool = np.full((size), False)
+    keep = np.random.choice(size, size=30000, replace=False)
+    keep.sort()
+    keep_bool[keep] = True
+    np.save(os.path.join("save/keep.npy"), keep_bool)
+
 
     size = len(train_ds)
     keep_bool = np.full((size), False)
@@ -62,11 +56,12 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None):
 
     keep = np.where(keep_bool)[0]
 
-    train_ds = LabeledSubset(train_ds, keep)
-    train_ds = CustomDataset(train_ds)
+    train_true_ds = LabeledSubset(train_ds, keep)
+    train_true_ds = CustomDataset(train_true_ds)
+
     # full_train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=4)
     # train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=4)
     test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=True, num_workers=4)
     
-    return train_ds, test_dl
+    return train_true_ds, test_dl
 

@@ -52,7 +52,7 @@ def unlearn_unrolling_sgd(args, savedir, unlearned_loader, test_loader, device, 
     for i, (name, params) in enumerate(model.named_parameters()):
         old_params[name] = params.clone()
         for grads in grad_list:
-            old_params[name] += args.lr * grads[i]
+            old_params[name] += args.lr * grads[i] * 0.1
 
     for name, params in model_unlearned.named_parameters():
         params.data.copy_(old_params[name])

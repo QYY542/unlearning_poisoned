@@ -8,12 +8,14 @@ def calculate_probability(scores):
 
 # 解析命令行参数
 parser = argparse.ArgumentParser()
-parser.add_argument("--poison_type", default="random_uniform", type=str, choices=["random_uniform", "fixed_label", "flipped_label"])
+parser.add_argument("--poison_type", default="random_label", type=str, choices=["random_label", "fixed_label", "flipped_label", "random_samples"])
 parser.add_argument("--target_sample", type=int, default=0, help="Index of the sample to extract scores for")
 parser.add_argument("--model", default="resnet18", type=str)
 args = parser.parse_args()
 savedir = os.path.join("exp/cifar10/", args.model, args.poison_type, str(f'target_sample_{args.target_sample}'))
 # savedir = os.path.join("exp/cifar10/", args.model, args.poison_type, str(f'target_sample_4'))
+
+print('======== Scores ========')
 
 # 读取 keep.npy 文件以作为索引指南
 target_index = args.target_sample

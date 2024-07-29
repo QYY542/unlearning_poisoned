@@ -48,7 +48,7 @@ class Poisoner:
         self.train_ds = train_ds
 
     # 总共投放num_to_poison个标签0到9的投毒数据
-    def poison_random_uniform(self):
+    def random_label(self):
         poison_index = self.args.target_sample
         print(f'poison_index:{poison_index}')
         num_per_label = self.repeat_num // 10  
@@ -79,7 +79,7 @@ class Poisoner:
         print(f'poison_index:{poison_index}')
 
         # y' != y
-        num_per_label = self.repeat_num // 10  
+        num_per_label = self.repeat_num // 100  
 
         for label in range(10): 
             for _ in range(num_per_label):
@@ -98,7 +98,22 @@ class Poisoner:
             self.unlearn_data.append((data, label))
                 
         self._apply_poison()
-        
+
+    def poison_random_samples(self, train_false_ds):
+        # Determine the size of the dataset
+        size = len(train_false_ds)
+
+        # Generate random indices without replacement
+        random_indices = np.random.choice(size, size=self.repeat_num, replace=False)
+
+        # Select a subset of the dataset using the random indices
+        poisoned_subset = Subset(train_false_ds, random_indices)
+
+        # Apply the poison
+        self.poisoned_data = poisoned_subset
+        self.unlearn_data = poisoned_subset
+        self._apply_poison()
+
     def _apply_poison(self):
         poisoned_dataset = CustomDataset(self.poisoned_data)
         unlearn_data = CustomDataset(self.unlearn_data)
@@ -120,6 +135,10 @@ class Poisoner:
 
     def get_poisoned_data_loader(self):
         return self.poisoned_train_dataset, self.unlearn_dl
+    
+    def get_target_sample(self):
+        poison_index = self.args.target_sample
+        return self.train_ds[poison_index]
     
     def get_poisoned_indices(self):
         return self.poison_indices

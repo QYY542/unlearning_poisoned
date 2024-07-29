@@ -7,11 +7,13 @@ import wandb
 from torch.utils.data import DataLoader, Subset
 from data_loader import get_data_loaders
 from unlearner import unlearn_unrolling_sgd
+from optimize import optimize_omega, simulate_annealing
 from poisoner import Poisoner  # 导入Poisoner类和全局变量
 from lira.train import train  # 引入 train函数
 from lira.inference import inference  # 引入 inference 函数
 from lira.score import score # 引入 score 函数
 from lira.utils import CustomDataset
+
 
 def remove_samples(dataset, target_sample):
     removed_data = [data for idx, data in enumerate(dataset) if idx != target_sample]
@@ -29,7 +31,7 @@ def main():
     parser.add_argument("--pkeep", default=0.5, type=float)
     parser.add_argument("--savedir", default="exp/cifar10", type=str)
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--poison_type", default="random_uniform", type=str, choices=["random_uniform", "fixed_label", "flipped_label"])
+    parser.add_argument("--poison_type", default="random_label", type=str, choices=["random_label", "fixed_label", "flipped_label", "random_samples"])
     parser.add_argument("--target_sample", default=0, type=int)
     parser.add_argument("--fixed_label", default=0, type=int)
     parser.add_argument("--repeat_num", default=10, type=int)
@@ -51,43 +53,51 @@ def main():
     np.random.seed(seed)
 
     savedir = os.path.join(args.savedir, args.model,args.poison_type, str(f'target_sample_{args.target_sample}'), str(args.shadow_id))
-    train_ds, test_dl = get_data_loaders(args.pkeep, args.shadow_id, args.n_shadows, seed=seed)
+    train_ds, test_dl, train_false_ds = get_data_loaders(args.pkeep, args.shadow_id, args.n_shadows, seed=seed)
 
     # 创建Poisoner实例并应用投毒方法
     poisoner = Poisoner(args, train_ds, repeat_num=args.repeat_num)
-    if args.poison_type == "random_uniform":
-        print("poison_type: random_uniform")
-        poisoner.poison_random_uniform()
+    if args.poison_type == "random_label":
+        print("poison_type: random_label")
+        poisoner.poison_random_label()
     elif args.poison_type == "fixed_label":
         print("poison_type: fixed_label")
         poisoner.poison_fixed_label(args.fixed_label, args.use_original_label)
     elif args.poison_type == "flipped_label":
         print("poison_type: flipped_label")
         poisoner.poison_flipped_and_fixed_labels(args.fixed_label, args.use_original_label)
+    elif args.poison_type == "random_samples":
+        print("poison_type: random_label")
+        poisoner.poison_random_samples(train_false_ds)
 
     # 获取投毒后的数据加载器
     poisoned_train_ds, unlearn_dl = poisoner.get_poisoned_data_loader()
+    target_sample = poisoner.get_target_sample()
 
     # =========== 投毒数据集
     print(f"=== Size of poisoned train_dl: {len(poisoned_train_ds)}")
     print(poisoned_train_ds.targets[:10])
-    train(args, savedir, poisoned_train_ds, test_dl, DEVICE, "poisoned")
-    inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned")
-    score(args, savedir, poisoned_train_ds, "poisoned") 
+    # train(args, savedir, poisoned_train_ds, test_dl, DEVICE, "poisoned")
+    # inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned")
+    # score(args, savedir, poisoned_train_ds, "poisoned") 
 
     poisoned_train_removed_ds = remove_samples(poisoned_train_ds, args.target_sample)
 
     print(f"=== Size of poisoned removed train_dl: {len(poisoned_train_removed_ds)}")
     print(poisoned_train_removed_ds.targets[:10])
-    train(args, savedir, poisoned_train_removed_ds, test_dl, DEVICE, "poisoned_removed")
-    inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned_removed")
-    score(args, savedir, poisoned_train_ds, "poisoned_removed") 
+    # train(args, savedir, poisoned_train_removed_ds, test_dl, DEVICE, "poisoned_removed")
+    # inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned_removed")
+    # score(args, savedir, poisoned_train_ds, "poisoned_removed") 
 
     # =========== 遗忘学习投毒数据集
+    # optimize_omega(args, savedir, unlearn_dl, test_dl, DEVICE, "unlearn", target_sample)
+    simulate_annealing(args, savedir, unlearn_dl, test_dl, DEVICE, "unlearn", target_sample)
     unlearn_unrolling_sgd(args, savedir, unlearn_dl, test_dl, DEVICE, "unlearn")
     inference(args, savedir, train_ds, DEVICE, "unlearn")
     score(args, savedir, train_ds, "unlearn")
 
+    # optimize_omega(args, savedir, unlearn_dl, test_dl, DEVICE, "unlearn_removed", target_sample)
+    simulate_annealing(args, savedir, unlearn_dl, test_dl, DEVICE, "unlearn_removed", target_sample)
     unlearn_unrolling_sgd(args, savedir, unlearn_dl, test_dl, DEVICE, "unlearn_removed")
     inference(args, savedir, train_ds, DEVICE, "unlearn_removed")
     score(args, savedir, train_ds, "unlearn_removed") 
@@ -95,17 +105,17 @@ def main():
     # =========== 重训练数据集
     print(f"=== Size of clean train_dl: {len(train_ds)}")
     print(train_ds.targets[:10])
-    train(args, savedir, train_ds, test_dl, DEVICE, "clean")
-    inference(args, savedir, train_ds, DEVICE, "clean")
-    score(args, savedir, train_ds, "clean") 
+    # train(args, savedir, train_ds, test_dl, DEVICE, "clean")
+    # inference(args, savedir, train_ds, DEVICE, "clean")
+    # score(args, savedir, train_ds, "clean") 
 
     train_removed_ds = remove_samples(train_ds, args.target_sample)
 
     print(f"=== Size of clean removed train_dl: {len(train_removed_ds)}")
     print(train_removed_ds.targets[:10])
-    train(args, savedir, train_removed_ds, test_dl, DEVICE, "clean_removed")
-    inference(args, savedir, train_ds, DEVICE, "clean_removed")
-    score(args, savedir, train_ds, "clean_removed")
+    # train(args, savedir, train_removed_ds, test_dl, DEVICE, "clean_removed")
+    # inference(args, savedir, train_ds, DEVICE, "clean_removed")
+    # score(args, savedir, train_ds, "clean_removed")
 
 if __name__ == "__main__":
     main()
