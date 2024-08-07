@@ -22,6 +22,7 @@ target_index = args.target_sample
 
 # 初始化存储分数的字典
 scores_dict = {'poisoned': [], 'poisoned_removed': [], 'clean': [], 'clean_removed': [], 'unlearn': [], 'unlearn_removed': []}
+# scores_dict = {'poisoned': [], 'poisoned_removed': [], 'clean': [], 'clean_removed': []}
 
 # 假设我们有一个mapping来确定每个shadow model目录对应的数据集
 dataset_mapping = {
@@ -38,13 +39,14 @@ for shadow_id in os.listdir(savedir):
     shadow_dir = os.path.join(savedir, shadow_id)
     if os.path.isdir(shadow_dir):
         for data_type in ['poisoned', 'poisoned_removed', 'clean', 'clean_removed', 'unlearn', 'unlearn_removed']:
+        # for data_type in ['poisoned', 'poisoned_removed', 'clean', 'clean_removed']:
             scores_path = os.path.join(shadow_dir, data_type, 'scores.npy')
             dataset_key = dataset_mapping[data_type]  # 确定属于哪个数据集
             if os.path.exists(scores_path):
                 scores = np.load(scores_path)
                 # print(f'scores len:{len(scores)}')
                 score = scores[target_index]
-                # print(f'{data_type}:{score}')
+                print(f'{data_type}:{score}')
                 scores_dict[dataset_key].append(score)
 
 # 计算概率

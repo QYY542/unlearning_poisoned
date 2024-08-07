@@ -21,18 +21,31 @@ def train(args, savedir, train_ds, test_dl, DEVICE, data_type):
     wandb.init(project="lira", mode="disabled" if args.debug else "online")
     train_dl = DataLoader(train_ds, batch_size=128, shuffle=True, num_workers=4)
 
-    
     # 初始化模型
-    if args.model == "wresnet28-2":
-        model = WideResNet(28, 2, 0.0, 10)
-    elif args.model == "wresnet28-10":
-        model = WideResNet(28, 10, 0.3, 10)
-    elif args.model == "resnet18":
-        model = models.resnet18(weights=None, num_classes=10)
-        model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        model.maxpool = nn.Identity()
-    else:
-        raise NotImplementedError
+    if args.dataset == "cifar10":
+        if args.model == "resnet18":
+            print("resnet18")
+            model = models.resnet18(weights=None, num_classes=10)
+            model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            model.maxpool = nn.Identity()
+        elif args.model == "vgg16":
+            print("vgg16")
+            model = models.vgg16(weights=None, num_classes=10)
+            model.features[0] = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        else:
+            raise NotImplementedError
+    elif args.dataset == "FashionMNIST":
+        if args.model == "resnet18":
+            print("resnet18")
+            model = models.resnet18(weights=None, num_classes=10)
+            model.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+            model.maxpool = nn.Identity()
+        elif args.model == "vgg16":
+            print("vgg16")
+            model = models.vgg16(weights=None, num_classes=10)
+            model.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+        else:
+            raise NotImplementedError
     model = model.to(DEVICE)
 
     optim = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)

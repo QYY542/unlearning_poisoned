@@ -8,19 +8,35 @@ from lira.wide_resnet import WideResNet
 from torchvision import models
 from torch import nn
 from lira.utils import approx_retraining
+from torch.utils.data import DataLoader
 
-def unlearn_unrolling_sgd(args, savedir, unlearned_loader, test_loader, device, data_type):
+def unlearn_unrolling_sgd(args, savedir, unlearn_ds, test_loader, device, data_type):
+    unlearned_loader = DataLoader(unlearn_ds, batch_size=128, shuffle=False, num_workers=4)
     # 初始化模型
-    if args.model == "wresnet28-2":
-        model = WideResNet(28, 2, 0.0, 10)
-    elif args.model == "wresnet28-10":
-        model = WideResNet(28, 10, 0.3, 10)
-    elif args.model == "resnet18":
-        model = models.resnet18(weights=None, num_classes=10)
-        model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        model.maxpool = nn.Identity()
-    else:
-        raise NotImplementedError
+    if args.dataset == "cifar10":
+        if args.model == "resnet18":
+            print("resnet18")
+            model = models.resnet18(weights=None, num_classes=10)
+            model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            model.maxpool = nn.Identity()
+        elif args.model == "vgg16":
+            print("vgg16")
+            model = models.vgg16(weights=None, num_classes=10)
+            model.features[0] = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        else:
+            raise NotImplementedError
+    elif args.dataset == "FashionMNIST":
+        if args.model == "resnet18":
+            print("resnet18")
+            model = models.resnet18(weights=None, num_classes=10)
+            model.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+            model.maxpool = nn.Identity()
+        elif args.model == "vgg16":
+            print("vgg16")
+            model = models.vgg16(weights=None, num_classes=10)
+            model.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+        else:
+            raise NotImplementedError
     model = model.to(device)
 
     # 从指定目录加载原模型权重
@@ -52,7 +68,7 @@ def unlearn_unrolling_sgd(args, savedir, unlearned_loader, test_loader, device, 
     for i, (name, params) in enumerate(model.named_parameters()):
         old_params[name] = params.clone()
         for grads in grad_list:
-            old_params[name] += args.lr * grads[i] * 0.1
+            old_params[name] += args.lr * grads[i]
 
     for name, params in model_unlearned.named_parameters():
         params.data.copy_(old_params[name])
@@ -81,60 +97,60 @@ def get_acc(model, dl, device):
 
 
 
-def unlearn_order(args, savedir, train_ds, unlearned_loader, test_loader, device, data_type, order=1):
-    # 初始化模型
-    if args.model == "wresnet28-2":
-        model = WideResNet(28, 2, 0.0, 10)
-    elif args.model == "wresnet28-10":
-        model = WideResNet(28, 10, 0.3, 10)
-    elif args.model == "resnet18":
-        model = models.resnet18(weights=None, num_classes=10)
-        model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        model.maxpool = nn.Identity()
-    else:
-        raise NotImplementedError
-    model = model.to(device)
+# def unlearn_order(args, savedir, train_ds, unlearned_loader, test_loader, device, data_type, order=1):
+#     # 初始化模型
+#     if args.model == "wresnet28-2":
+#         model = WideResNet(28, 2, 0.0, 10)
+#     elif args.model == "wresnet28-10":
+#         model = WideResNet(28, 10, 0.3, 10)
+#     elif args.model == "resnet18":
+#         model = models.resnet18(weights=None, num_classes=10)
+#         model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+#         model.maxpool = nn.Identity()
+#     else:
+#         raise NotImplementedError
+#     model = model.to(device)
 
-    # 从指定目录加载原模型权重
-    poisoned_model_path = os.path.join(savedir, 'poisoned', 'model.pt')
-    model.load_state_dict(torch.load(poisoned_model_path, map_location=device))
+#     # 从指定目录加载原模型权重
+#     poisoned_model_path = os.path.join(savedir, 'poisoned', 'model.pt')
+#     model.load_state_dict(torch.load(poisoned_model_path, map_location=device))
 
-    # 初始化损失函数
-    criterion = nn.CrossEntropyLoss()
+#     # 初始化损失函数
+#     criterion = nn.CrossEntropyLoss()
 
-    # 获取 unlearned_loader 中的数据
-    z_x, z_y = next(iter(unlearned_loader))
-    z_x, z_y = z_x.to(device), z_y.to(device)
+#     # 获取 unlearned_loader 中的数据
+#     z_x, z_y = next(iter(unlearned_loader))
+#     z_x, z_y = z_x.to(device), z_y.to(device)
 
-    # 从 train_ds 中获取目标样本
-    target_index = args.target_sample
-    z_x_delta, z_y_delta = train_ds[target_index]
-    z_x_delta, z_y_delta = z_x_delta.to(device), torch.tensor([z_y_delta]).to(device)
+#     # 从 train_ds 中获取目标样本
+#     target_index = args.target_sample
+#     z_x_delta, z_y_delta = train_ds[target_index]
+#     z_x_delta, z_y_delta = z_x_delta.to(device), torch.tensor([z_y_delta]).to(device)
 
-    # 执行近似重训练
-    theta_approx, diverged = approx_retraining(model, criterion, z_x, z_y, z_x_delta, z_y_delta, order=order)
+#     # 执行近似重训练
+#     theta_approx, diverged = approx_retraining(model, criterion, z_x, z_y, z_x_delta, z_y_delta, order=order)
 
-    # 更新模型参数
-    with torch.no_grad():
-        for param, new_data in zip(model.parameters(), theta_approx):
-            param.data = new_data
+#     # 更新模型参数
+#     with torch.no_grad():
+#         for param, new_data in zip(model.parameters(), theta_approx):
+#             param.data = new_data
 
-    # 保存遗忘学习后的模型
-    savedir = os.path.join(savedir, data_type)
-    os.makedirs(savedir, exist_ok=True)
-    torch.save(model.state_dict(), os.path.join(savedir, "model.pt"))
-    print(f"Model saved to {os.path.join(savedir, 'model.pt')}")
+#     # 保存遗忘学习后的模型
+#     savedir = os.path.join(savedir, data_type)
+#     os.makedirs(savedir, exist_ok=True)
+#     torch.save(model.state_dict(), os.path.join(savedir, "model.pt"))
+#     print(f"Model saved to {os.path.join(savedir, 'model.pt')}")
 
-    # 测试模型
-    acc_test = get_acc(model, test_loader, device)
-    print(f"[test] acc_test: {acc_test:.4f}")
+#     # 测试模型
+#     acc_test = get_acc(model, test_loader, device)
+#     print(f"[test] acc_test: {acc_test:.4f}")
 
-@torch.no_grad()
-def get_acc(model, dl, device):
-    acc = []
-    for x, y in tqdm(dl, desc="Testing model"):
-        x, y = x.to(device), y.to(device)
-        acc.append(torch.argmax(model(x), dim=1) == y)
-    acc = torch.cat(acc)
-    acc = torch.sum(acc) / len(acc)
-    return acc.item()
+# @torch.no_grad()
+# def get_acc(model, dl, device):
+#     acc = []
+#     for x, y in tqdm(dl, desc="Testing model"):
+#         x, y = x.to(device), y.to(device)
+#         acc.append(torch.argmax(model(x), dim=1) == y)
+#     acc = torch.cat(acc)
+#     acc = torch.sum(acc) / len(acc)
+#     return acc.item()

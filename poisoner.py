@@ -6,6 +6,7 @@ from lira.utils import CustomDataset
 from torchvision import transforms
 from pathlib import Path
 from torchvision.datasets import CIFAR10
+import random
 
 # POISON_METHOD = "first"  # 默认投毒方法
 
@@ -20,9 +21,10 @@ class Poisoner:
         self.args = args
         
         self.repeat_num = repeat_num
-        self.poisoned_data = []
-        self.unlearn_data = []
+        self.poisoned_dataset = []
+        self.unlearn_dataset = []
         self.poison_indices = [] 
+        self.flipped_dataset = []
 
         # 随机裁切
         # datadir = Path().home() / "opt/data/cifar"
@@ -44,19 +46,19 @@ class Poisoner:
         # train_ds_clip = LabeledSubset(train_ds_clip, keep)
         # train_ds_clip = CustomDataset(train_ds_clip)
 
-        # self.train_ds = train_ds_clip
+        # self.train_ds_clip = train_ds_clip
         self.train_ds = train_ds
 
     # 总共投放num_to_poison个标签0到9的投毒数据
-    def random_label(self):
+    def poison_random_label(self):
         poison_index = self.args.target_sample
         print(f'poison_index:{poison_index}')
         num_per_label = self.repeat_num // 10  
         for label in range(10): 
             for _ in range(num_per_label):
                 data, _ = self.train_ds[poison_index]
-                self.poisoned_data.append((data, label)) 
-                self.unlearn_data.append((data, label))
+                self.poisoned_dataset.append((data, label)) 
+                self.poisoned_dataset.append((data, label))
         self._apply_poison()
 
     # 投放num_to_poison个original_label的投毒数据
@@ -70,8 +72,8 @@ class Poisoner:
                 label = original_label
             else:
                 label = fixed_label
-            self.poisoned_data.append((data, label))
-            self.unlearn_data.append((data, label))
+            self.poisoned_dataset.append((data, label))
+            self.unlearn_dataset.append((data, label))
         self._apply_poison()
 
     def poison_flipped_and_fixed_labels(self, fixed_label, use_original_label=False):
@@ -79,23 +81,39 @@ class Poisoner:
         print(f'poison_index:{poison_index}')
 
         # y' != y
-        num_per_label = self.repeat_num // 100  
+        num_per_label = 4
+        all_labels = list(range(10))
+        data, original_label = self.train_ds[poison_index]
 
-        for label in range(10): 
-            for _ in range(num_per_label):
-                data, original_label = self.train_ds[poison_index]
-                if label != original_label:
-                    self.poisoned_data.append((data, label)) 
+        # 确保 possible_labels 不包含 original_label
+        possible_labels = [label for label in all_labels if label != original_label]
+
+        # 计算新标签，避免使用原始标签
+        # 固定使用可能标签中的某个，根据 poison_index 模 possible_labels 的长度
+        label = possible_labels[poison_index % len(possible_labels)]
+
+        for _ in range(num_per_label):
+            self.poisoned_dataset.append((data, label))
+            self.flipped_dataset.append((data, label))
+
+        # for label in range(10): 
+        #     for _ in range(num_per_label):
+        #         data, original_label = self.train_ds_clip[poison_index]
+        #         if label != original_label:
+        #             self.poisoned_dataset.append((data, label)) 
+        #             self.flipped_dataset.append((data, label))
 
         # y' == y
-        for _ in range(self.repeat_num):
+        num_per_label = self.repeat_num - num_per_label
+        for _ in range(num_per_label):
             data, original_label = self.train_ds[poison_index]
             if use_original_label:
                 label = original_label
             else:
                 label = fixed_label
-            self.poisoned_data.append((data, label))
-            self.unlearn_data.append((data, label))
+
+            self.poisoned_dataset.append((data, label))
+            self.unlearn_dataset.append((data, label))
                 
         self._apply_poison()
 
@@ -110,35 +128,29 @@ class Poisoner:
         poisoned_subset = Subset(train_false_ds, random_indices)
 
         # Apply the poison
-        self.poisoned_data = poisoned_subset
-        self.unlearn_data = poisoned_subset
+        self.poisoned_dataset = poisoned_subset
+        self.unlearn_dataset = poisoned_subset
         self._apply_poison()
 
     def _apply_poison(self):
-        poisoned_dataset = CustomDataset(self.poisoned_data)
-        unlearn_data = CustomDataset(self.unlearn_data)
-        print(f'poisoned labels:{poisoned_dataset.targets}')
-        # torch.set_printoptions(threshold=10, edgeitems=2, linewidth=150)
-        # for data, label in poisoned_dataset:
-        #     print(data)
-        #     print(label)
+        self.poisoned_dataset = CustomDataset(self.poisoned_dataset)
+        self.unlearn_dataset = CustomDataset(self.unlearn_dataset)
+        self.flipped_dataset = CustomDataset(self.flipped_dataset)
+        print(f'poisoned labels:{self.poisoned_dataset.targets}')
 
-        # self.poisoned_full_dataset = ConcatDataset([self.full_train_dl.dataset, poisoned_dataset])
-        self.poisoned_train_dataset = ConcatDataset([self.train_ds, poisoned_dataset])
-
-        # self.poisoned_full_dataset = CustomDataset(self.poisoned_full_dataset)
+        self.poisoned_train_dataset = ConcatDataset([self.train_ds, self.poisoned_dataset])
         self.poisoned_train_dataset = CustomDataset(self.poisoned_train_dataset)
         
-        # self.poisoned_full_dl = DataLoader(self.poisoned_full_dataset, batch_size=self.full_train_dl.batch_size, shuffle=False, num_workers=4)
-        # self.poisoned_train_dl = DataLoader(self.poisoned_train_dataset, batch_size=self.reduced_train_dl.batch_size, shuffle=False, num_workers=4)
-        self.unlearn_dl = DataLoader(unlearn_data, batch_size=128, shuffle=False, num_workers=4)
 
     def get_poisoned_data_loader(self):
-        return self.poisoned_train_dataset, self.unlearn_dl
+        return self.poisoned_train_dataset, self.unlearn_dataset, self.flipped_dataset
     
     def get_target_sample(self):
         poison_index = self.args.target_sample
         return self.train_ds[poison_index]
+    
+    def get_flipped_train_data_loader(self):
+        return self.unlearned_train_dataset
     
     def get_poisoned_indices(self):
         return self.poison_indices

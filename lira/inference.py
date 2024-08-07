@@ -15,16 +15,30 @@ from lira.wide_resnet import WideResNet  # 确保路径正确，或根据你的�
 def inference(args, savedir, train_ds, device, data_type):
     train_dl = DataLoader(train_ds, batch_size=128, shuffle=False, num_workers=4)
 
-    if args.model == "wresnet28-2":
-        model = WideResNet(28, 2, 0.0, 10)
-    elif args.model == "wresnet28-10":
-        model = WideResNet(28, 10, 0.3, 10)
-    elif args.model == "resnet18":
-        model = models.resnet18(weights=None, num_classes=10)
-        model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        model.maxpool = nn.Identity()
-    else:
-        raise NotImplementedError
+    if args.dataset == "cifar10":
+        if args.model == "resnet18":
+            print("resnet18")
+            model = models.resnet18(weights=None, num_classes=10)
+            model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            model.maxpool = nn.Identity()
+        elif args.model == "vgg16":
+            print("vgg16")
+            model = models.vgg16(weights=None, num_classes=10)
+            model.features[0] = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        else:
+            raise NotImplementedError
+    elif args.dataset == "FashionMNIST":
+        if args.model == "resnet18":
+            print("resnet18")
+            model = models.resnet18(weights=None, num_classes=10)
+            model.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+            model.maxpool = nn.Identity()
+        elif args.model == "vgg16":
+            print("vgg16")
+            model = models.vgg16(weights=None, num_classes=10)
+            model.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+        else:
+            raise NotImplementedError
 
     # Build the model path using the shadow_id
     savedir = os.path.join(savedir, data_type)

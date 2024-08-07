@@ -21,9 +21,10 @@ def calculate_probabilities(scores, threshold):
 parser = argparse.ArgumentParser()
 parser.add_argument("--poison_type", default="random_label", type=str, choices=["random_label", "fixed_label", "flipped_label", "random_samples"])
 parser.add_argument("--target_sample", type=int, default=0, help="Index of the sample to extract scores for")
-parser.add_argument("--model", default="resnet18", type=str)
+parser.add_argument("--model", default="vgg16", type=str)
+parser.add_argument("--dataset", default="cifar10", type=str, choices=["cifar10", "FashionMNIST"])
 args = parser.parse_args()
-savedir = os.path.join("exp/cifar10/", args.model, args.poison_type, str(f'target_sample_{args.target_sample}'))
+savedir = os.path.join("exp/", args.dataset, args.model, args.poison_type, str(f'target_sample_{args.target_sample}'))
 
 # 读取 keep.npy 文件以作为索引指南
 target_index = args.target_sample
@@ -42,6 +43,7 @@ for shadow_id in os.listdir(savedir):
     shadow_dir = os.path.join(savedir, shadow_id)
     if os.path.isdir(shadow_dir):
         for data_type in ['clean', 'clean_removed', 'unlearn', 'unlearn_removed', 'poisoned', 'poisoned_removed']:
+        # for data_type in ['poisoned', 'poisoned_removed', 'unlearn', 'unlearn_removed']:
             scores_path = os.path.join(shadow_dir, data_type, 'scores.npy')
             if os.path.exists(scores_path):
                 scores = np.load(scores_path)
@@ -59,7 +61,7 @@ for shadow_id in os.listdir(savedir):
 # 计算和绘制ROC曲线
 plt.figure()
 
-# Clean vs Clean Removed
+# # Clean vs Clean Removed
 fpr_clean, tpr_clean, thresholds_clean = roc_curve(clean_labels, clean_scores)
 roc_auc_clean = auc(fpr_clean, tpr_clean)
 plt.plot(fpr_clean, tpr_clean, label=f'Clean vs Clean remove Sample (area = {roc_auc_clean:.3f})')
@@ -74,7 +76,7 @@ fpr_poisoned, tpr_poisoned, thresholds_poisoned = roc_curve(poisoned_labels, poi
 roc_auc_poisoned = auc(fpr_poisoned, tpr_poisoned)
 plt.plot(fpr_poisoned, tpr_poisoned, label=f'Poisoned vs Poisoned remove Sample (area = {roc_auc_poisoned:.3f})')
 
-directory = f'save/{args.model}/{args.poison_type}/'
+directory = f'save/{args.dataset}/{args.model}/{args.poison_type}/'
 if not os.path.exists(directory):
     os.makedirs(directory)
 
@@ -124,7 +126,7 @@ print(f"Unlearn probabilities: {unlearn_probs:.3f}")
 print(f"Unlearn removed probabilities: {unlearn_removed_probs:.3f}")
 print(f"Adv_Unlearn: {(unlearn_probs-unlearn_removed_probs):.3f}")
 
-print("=== Clean ===")
+# print("=== Clean ===")
 print(f"Clean probabilities: {clean_probs:.3f}")
 print(f"Clean removed probabilities: {clean_removed_probs:.3f}")
 print(f"Adv_Clean: {(clean_probs-clean_removed_probs):.3f}")
