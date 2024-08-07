@@ -76,12 +76,12 @@ class Poisoner:
             self.unlearn_dataset.append((data, label))
         self._apply_poison()
 
-    def poison_flipped_and_fixed_labels(self, fixed_label, use_original_label=False):
+    def poison_flipped_and_fixed_labels(self, fixed_label, use_original_label=False,num_per_label=8):
         poison_index = self.args.target_sample
         print(f'poison_index:{poison_index}')
 
         # y' != y
-        num_per_label = 4
+        num_per_label = num_per_label
         all_labels = list(range(10))
         data, original_label = self.train_ds[poison_index]
 

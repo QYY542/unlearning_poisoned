@@ -1,5 +1,5 @@
 #!/bin/bash
-TARGET_SAMPLE=23103
+TARGET_SAMPLE=2563
 
 
 # python plot.py --poison_type random_label --target_sample $TARGET_SAMPLE

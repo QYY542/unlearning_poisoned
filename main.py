@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--lr", default=0.1, type=float)
     parser.add_argument("--epochs", default=1, type=int)
     parser.add_argument("--n_shadows", default=16, type=int)
+    parser.add_argument("--num_per_label", default=8, type=int)
     parser.add_argument("--shadow_id", default=1, type=int)
     parser.add_argument("--model", default="resnet18", type=str)
     parser.add_argument("--pkeep", default=0.5, type=float)
@@ -66,12 +67,12 @@ def main():
         poisoner.poison_fixed_label(args.fixed_label, args.use_original_label)
     elif args.poison_type == "flipped_label":
         print("poison_type: flipped_label")
-        poisoner.poison_flipped_and_fixed_labels(args.fixed_label, args.use_original_label)
+        poisoner.poison_flipped_and_fixed_labels(args.fixed_label, args.use_original_label, args.num_per_label)
 
     # 获取投毒后的数据加载器
     poisoned_train_ds, unlearn_ds, flipped_ds = poisoner.get_poisoned_data_loader()
 
-    # # =========== 投毒数据集
+    # =========== 投毒数据集
     # print(f"=== Size of poisoned train_dl: {len(poisoned_train_ds)}")
     # print(poisoned_train_ds.targets[:10])
     # train(args, savedir, poisoned_train_ds, test_dl, DEVICE, "poisoned")
@@ -88,33 +89,33 @@ def main():
 
 
 
-    # # # =========== 重训练数据集
-    # print(f"=== Size of clean train_dl: {len(train_ds)}")
-    # print(train_ds.targets[:10])
-    # unlearn_flipped_ds = ConcatDataset([train_ds, flipped_ds])
-    # unlearn_flipped_ds = CustomDataset(unlearn_flipped_ds)
-    # train(args, savedir, unlearn_flipped_ds, test_dl, DEVICE, "clean")
-    # inference(args, savedir, train_ds, DEVICE, "clean")
-    # score(args, savedir, train_ds, "clean") 
+    # =========== 重训练数据集
+    print(f"=== Size of clean train_dl: {len(train_ds)}")
+    print(train_ds.targets[:10])
+    unlearn_flipped_ds = ConcatDataset([train_ds, flipped_ds])
+    unlearn_flipped_ds = CustomDataset(unlearn_flipped_ds)
+    train(args, savedir, unlearn_flipped_ds, test_dl, DEVICE, "clean")
+    inference(args, savedir, train_ds, DEVICE, "clean")
+    score(args, savedir, train_ds, "clean") 
 
-    # train_removed_ds = remove_samples(train_ds, args.target_sample)
+    train_removed_ds = remove_samples(train_ds, args.target_sample)
 
-    # print(f"=== Size of clean removed train_dl: {len(train_removed_ds)}")
-    # print(train_removed_ds.targets[:10])
-    # unlearn_flipped_removed_ds = ConcatDataset([train_removed_ds, flipped_ds])
-    # unlearn_flipped_removed_ds = CustomDataset(unlearn_flipped_removed_ds)
-    # train(args, savedir, unlearn_flipped_removed_ds, test_dl, DEVICE, "clean_removed")
-    # inference(args, savedir, train_ds, DEVICE, "clean_removed")
-    # score(args, savedir, train_ds, "clean_removed")
+    print(f"=== Size of clean removed train_dl: {len(train_removed_ds)}")
+    print(train_removed_ds.targets[:10])
+    unlearn_flipped_removed_ds = ConcatDataset([train_removed_ds, flipped_ds])
+    unlearn_flipped_removed_ds = CustomDataset(unlearn_flipped_removed_ds)
+    train(args, savedir, unlearn_flipped_removed_ds, test_dl, DEVICE, "clean_removed")
+    inference(args, savedir, train_ds, DEVICE, "clean_removed")
+    score(args, savedir, train_ds, "clean_removed")
 
     # # =========== 近似遗忘
-    unlearn_unrolling_sgd(args, savedir, unlearn_ds, test_dl, DEVICE, "unlearn")
-    inference(args, savedir, poisoned_train_ds, DEVICE, "unlearn")
-    score(args, savedir, poisoned_train_ds, "unlearn")
+    # unlearn_unrolling_sgd(args, savedir, unlearn_ds, test_dl, DEVICE, "unlearn")
+    # inference(args, savedir, poisoned_train_ds, DEVICE, "unlearn")
+    # score(args, savedir, poisoned_train_ds, "unlearn")
 
-    unlearn_unrolling_sgd(args, savedir, unlearn_ds, test_dl, DEVICE, "unlearn_removed")
-    inference(args, savedir, poisoned_train_ds, DEVICE, "unlearn_removed")
-    score(args, savedir, poisoned_train_ds, "unlearn_removed") 
+    # unlearn_unrolling_sgd(args, savedir, unlearn_ds, test_dl, DEVICE, "unlearn_removed")
+    # inference(args, savedir, poisoned_train_ds, DEVICE, "unlearn_removed")
+    # score(args, savedir, poisoned_train_ds, "unlearn_removed") 
 
 
 if __name__ == "__main__":
