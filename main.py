@@ -45,7 +45,7 @@ def main():
     parser.add_argument('--eval_every', default=50, type=int, help='eval every N steps')
     args = parser.parse_args()
 
-    DEVICE = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # seed = np.random.randint(0, 1000000000)
     # seed ^= int(time.time())
