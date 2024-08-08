@@ -7,7 +7,6 @@ import wandb
 from torch.utils.data import DataLoader, Subset, ConcatDataset
 from data_loader import get_data_loaders
 from unlearner import unlearn_unrolling_sgd
-from optimize import optimize_omega, simulate_annealing
 from poisoner import Poisoner  # 导入Poisoner类和全局变量
 from lira.train import train  # 引入 train函数
 from lira.inference import inference  # 引入 inference 函数
