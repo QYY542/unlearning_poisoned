@@ -11,10 +11,8 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split, Subset
 from torchvision import models, transforms
-from torchvision.datasets import CIFAR10
+from torchvision.datasets import CIFAR10, CIFAR100, FashionMNIST
 from tqdm import tqdm
-
-from lira.wide_resnet import WideResNet
 
 def train(args, savedir, train_ds, test_dl, DEVICE, data_type):
     args.debug = True
@@ -28,22 +26,33 @@ def train(args, savedir, train_ds, test_dl, DEVICE, data_type):
             model = models.resnet18(weights=None, num_classes=10)
             model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
             model.maxpool = nn.Identity()
-        elif args.model == "vgg16":
-            print("vgg16")
-            model = models.vgg16(weights=None, num_classes=10)
-            model.features[0] = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        elif args.model == "mobilenet_v2":
+            print("mobilenet_v2")
+            model = models.mobilenet_v2(weights=None, num_classes=10)
+        else:
+            raise NotImplementedError
+    elif args.dataset == "cifar100":
+        if args.model == "resnet18":
+            print("resnet18")
+            model = models.resnet18(weights=None, num_classes=100)
+            model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            model.maxpool = nn.Identity()
+        elif args.model == "mobilenet_v2":
+            print("mobilenet_v2")
+            model = models.mobilenet_v2(weights=None, num_classes=100)
         else:
             raise NotImplementedError
     elif args.dataset == "FashionMNIST":
         if args.model == "resnet18":
             print("resnet18")
             model = models.resnet18(weights=None, num_classes=10)
-            model.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+            model.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)
             model.maxpool = nn.Identity()
-        elif args.model == "vgg16":
-            print("vgg16")
-            model = models.vgg16(weights=None, num_classes=10)
-            model.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+        elif args.model == "mobilenet_v2":
+            print("mobilenet_v2")
+            model = models.mobilenet_v2(weights=None, num_classes=10)
+            # 修改MobileNet V2模型的第一层卷积层的输入通道数为1
+            model.features[0][0] = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, stride=1, padding=1)
         else:
             raise NotImplementedError
     model = model.to(DEVICE)
@@ -56,7 +65,6 @@ def train(args, savedir, train_ds, test_dl, DEVICE, data_type):
         model.train()
         loss_total = 0
         pbar = tqdm(train_dl)
-        # print("First 10 labels:", next(iter(train_dl))[1][:10])
         
         for itr, (x, y) in enumerate(pbar):
             x, y = x.to(DEVICE), y.to(DEVICE)
@@ -80,7 +88,6 @@ def train(args, savedir, train_ds, test_dl, DEVICE, data_type):
     savedir = os.path.join(savedir, data_type)
     os.makedirs(savedir, exist_ok=True)
     torch.save(model.state_dict(), os.path.join(savedir, "model.pt"))
-
 
 @torch.no_grad()
 def get_acc(model, dl, DEVICE):

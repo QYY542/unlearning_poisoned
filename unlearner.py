@@ -19,22 +19,33 @@ def unlearn_unrolling_sgd(args, savedir, unlearn_ds, test_loader, device, data_t
             model = models.resnet18(weights=None, num_classes=10)
             model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
             model.maxpool = nn.Identity()
-        elif args.model == "vgg16":
-            print("vgg16")
-            model = models.vgg16(weights=None, num_classes=10)
-            model.features[0] = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        elif args.model == "mobilenet_v2":
+            print("mobilenet_v2")
+            model = models.mobilenet_v2(weights=None, num_classes=10)
+        else:
+            raise NotImplementedError
+    elif args.dataset == "cifar100":
+        if args.model == "resnet18":
+            print("resnet18")
+            model = models.resnet18(weights=None, num_classes=100)
+            model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            model.maxpool = nn.Identity()
+        elif args.model == "mobilenet_v2":
+            print("mobilenet_v2")
+            model = models.mobilenet_v2(weights=None, num_classes=100)
         else:
             raise NotImplementedError
     elif args.dataset == "FashionMNIST":
         if args.model == "resnet18":
             print("resnet18")
             model = models.resnet18(weights=None, num_classes=10)
-            model.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+            model.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)
             model.maxpool = nn.Identity()
-        elif args.model == "vgg16":
-            print("vgg16")
-            model = models.vgg16(weights=None, num_classes=10)
-            model.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+        elif args.model == "mobilenet_v2":
+            print("mobilenet_v2")
+            model = models.mobilenet_v2(weights=None, num_classes=10)
+            # 修改MobileNet V2模型的第一层卷积层的输入通道数为1
+            model.features[0][0] = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, stride=1, padding=1)
         else:
             raise NotImplementedError
     model = model.to(device)
