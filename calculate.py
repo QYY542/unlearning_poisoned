@@ -1,79 +1,143 @@
-import numpy as np
 import os
 import argparse
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+from torchvision.models import resnet18, mobilenet_v2
+from pathlib import Path
 
-def calculate_probability(scores):
-    """简单地通过取平均分数模拟计算概率 P(b = 0|T(S))。"""
-    return np.mean(scores)
+# 假设 get_data_loaders 函数已经定义好了
+from data_loader import get_data_loaders  # 请确保替换 'data_loader' 为实际模块名
 
-# 解析命令行参数
-parser = argparse.ArgumentParser()
-parser.add_argument("--poison_type", default="random_label", type=str, choices=["random_label", "fixed_label", "flipped_label", "random_samples"])
-parser.add_argument("--target_sample", type=int, default=0, help="Index of the sample to extract scores for")
-parser.add_argument("--model", default="resnet18", type=str)
-args = parser.parse_args()
-savedir = os.path.join("exp/cifar10/", args.model, args.poison_type, str(f'target_sample_{args.target_sample}'))
-# savedir = os.path.join("exp/cifar10/", args.model, args.poison_type, str(f'target_sample_4'))
+def load_model(model_path, device, dataset, model_name):
+    """
+    加载模型。
+    """
+    try:
+        # 初始化模型
+        if dataset == "cifar10":
+            if model_name == "resnet18":
+                print("resnet18")
+                model = resnet18(weights=None, num_classes=10)
+                model.conv1 = torch.nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+                model.maxpool = torch.nn.Identity()
+            elif model_name == "mobilenet_v2":
+                print("mobilenet_v2")
+                model = mobilenet_v2(weights=None, num_classes=10)
+                # 修改 MobileNet 第一层的输入通道数
+                model.features[0][0] = torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)
+            else:
+                raise NotImplementedError
+        elif dataset == "cifar100":
+            if model_name == "resnet18":
+                print("resnet18")
+                model = resnet18(weights=None, num_classes=100)
+                model.conv1 = torch.nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+                model.maxpool = torch.nn.Identity()
+            elif model_name == "mobilenet_v2":
+                print("mobilenet_v2")
+                model = mobilenet_v2(weights=None, num_classes=100)
+            else:
+                raise NotImplementedError
+        elif dataset == "FashionMNIST":
+            if model_name == "resnet18":
+                print("resnet18")
+                model = resnet18(weights=None, num_classes=10)
+                model.conv1 = torch.nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)
+                model.maxpool = torch.nn.Identity()
+            elif model_name == "mobilenet_v2":
+                print("mobilenet_v2")
+                model = mobilenet_v2(weights=None, num_classes=10)
+                # 修改 MobileNet 第一层的输入通道数
+                model.features[0][0] = torch.nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, stride=1, padding=1)
+            else:
+                raise NotImplementedError
+        else:
+            raise ValueError("Unsupported dataset.")
 
-print('======== Scores ========')
+        model = model.to(device)
+        
+        # 加载模型权重
+        model.load_state_dict(torch.load(model_path, map_location=device))
+        model.eval()
+        return model
+    except FileNotFoundError:
+        print(f"Error: The file {model_path} does not exist.")
+        return None
 
-# 读取 keep.npy 文件以作为索引指南
-target_index = args.target_sample
+def predict_with_model(model, data_loader, device):
+    """
+    使用模型进行预测。
+    """
+    all_logits = []
+    with torch.no_grad():
+        for inputs, _ in data_loader:
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            all_logits.append(outputs.cpu().numpy())
+    return np.concatenate(all_logits)
 
-# 初始化存储分数的字典
-scores_dict = {'poisoned': [], 'poisoned_removed': [], 'clean': [], 'clean_removed': [], 'unlearn': [], 'unlearn_removed': []}
-# scores_dict = {'poisoned': [], 'poisoned_removed': [], 'clean': [], 'clean_removed': []}
+def calculate_accuracy(logits, labels):
+    """
+    计算准确率。
+    """
+    predictions = np.argmax(logits, axis=1)
+    accuracy = np.mean(predictions == labels)
+    return accuracy
 
-# 假设我们有一个mapping来确定每个shadow model目录对应的数据集
-dataset_mapping = {
-    'poisoned': 'poisoned',
-    'poisoned_removed': 'poisoned_removed',
-    'clean': 'clean',
-    'clean_removed': 'clean_removed',
-    'unlearn': 'unlearn',
-    'unlearn_removed': 'unlearn_removed'
-}
+def main(poison_type, target_sample, model_name, dataset):
+    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
+    savedir = os.path.join("exp/", dataset, model_name, poison_type, f'target_sample_{target_sample}')
+    results = {}
+    
+    # 遍历每个shadow model目录
+    for shadow_id in os.listdir(savedir):
+        shadow_dir = os.path.join(savedir, shadow_id)
+        results[shadow_id] = {}
+        
+        # for data_type in ['clean', 'clean_removed', 'poisoned', 'poisoned_removed']:
+        for data_type in ['poisoned']:
+            # 加载模型
+            model_path = os.path.join(shadow_dir, data_type, 'model.pt')
+            model = load_model(model_path, DEVICE, dataset, model_name)
+            
+            if model is not None:
+                # 获取数据加载器
+                _, test_dl = get_data_loaders(dataset=dataset)
+                
+                # 使用模型进行预测
+                model_logits = predict_with_model(model, test_dl, DEVICE)
+                
+                # 从测试数据加载器中获取标签
+                all_labels = []
+                for _, labels in test_dl:
+                    all_labels.append(labels.numpy())
+                all_labels = np.concatenate(all_labels)
+                
+                # 计算准确率
+                accuracy = calculate_accuracy(model_logits, all_labels)
+                results[shadow_id][data_type] = accuracy * 100
+                
+                print(f"Shadow ID: {shadow_id}, Data Type: {data_type}, Average accuracy: {accuracy * 100:.2f}%")
+    
+    # 汇总结果
+    print("\nSummary:")
+    for shadow_id, data_types in results.items():
+        print(f"Shadow ID: {shadow_id}")
+        for data_type, accuracy in data_types.items():
+            print(f"  {data_type}: {accuracy:.2f}%")
+        print()
 
-# 遍历每个shadow model目录
-for shadow_id in os.listdir(savedir):
-    shadow_dir = os.path.join(savedir, shadow_id)
-    if os.path.isdir(shadow_dir):
-        for data_type in ['poisoned', 'poisoned_removed', 'clean', 'clean_removed', 'unlearn', 'unlearn_removed']:
-        # for data_type in ['poisoned', 'poisoned_removed', 'clean', 'clean_removed']:
-            scores_path = os.path.join(shadow_dir, data_type, 'scores.npy')
-            dataset_key = dataset_mapping[data_type]  # 确定属于哪个数据集
-            if os.path.exists(scores_path):
-                scores = np.load(scores_path)
-                # print(f'scores len:{len(scores)}')
-                score = scores[target_index]
-                print(f'{data_type}:{score}')
-                scores_dict[dataset_key].append(score)
-
-# 计算概率
-P_S1 = calculate_probability(scores_dict['poisoned'])
-P_S2 = calculate_probability(scores_dict['poisoned_removed'])
-P_S3 = calculate_probability(scores_dict['unlearn'])
-P_S4 = calculate_probability(scores_dict['unlearn_removed'])
-
-P_S3_clean = calculate_probability(scores_dict['clean'])
-P_S4_clean = calculate_probability(scores_dict['clean_removed'])
-
-# 打印概率
-print("P_S1 :", P_S1)
-print("P_S2 :", P_S2)
-print("P_S3 :", P_S3)
-print("P_S4 :", P_S4)
-print("P_S3_clean:", P_S3_clean)
-print("P_S4_clean:", P_S4_clean)
-
-# 计算AdvMIA和AdvUL MIA
-AdvMIA = P_S1 - P_S2
-AdvUL_MIA = P_S3 - P_S4
-AdvUL_MIA_clean = P_S3_clean - P_S4_clean
-
-AdvUL_unlearn = AdvUL_MIA - AdvMIA
-AdvUL_clean = AdvUL_MIA_clean - AdvMIA
-
-
-print("AdvUL(近似遗忘):", AdvUL_unlearn)
-print("AdvUL(完全重训练):", AdvUL_clean)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Calculate average accuracy from model predictions.")
+    
+    parser.add_argument("--poison_type", default="flipped_label", type=str, choices=["random_label", "fixed_label", "flipped_label", "random_samples"], help="Poisoning type.")
+    parser.add_argument("--target_sample", type=int, default=0, help="Index of the sample to extract scores for.")
+    parser.add_argument("--model_name", default="resnet18", type=str, help="Model name.")
+    parser.add_argument("--dataset", default="cifar10", type=str, choices=["cifar10", "cifar100", "FashionMNIST"], help="Dataset to use.")
+    
+    args = parser.parse_args()
+    
+    main(args.poison_type, args.target_sample, args.model_name, args.dataset)

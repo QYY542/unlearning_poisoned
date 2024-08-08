@@ -15,7 +15,7 @@ class LabeledSubset(Subset):
         super().__init__(dataset, indices)
         self.targets = [dataset.targets[i] for i in indices]
 
-def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None, dataset='cifar10'):
+def get_data_loaders(pkeep=0.5, shadow_id=0, n_shadows=30, batch_size=128, seed=None, dataset='cifar10'):
     if seed is None:
         seed = np.random.randint(0, 1000000000)
     np.random.seed(seed)
@@ -72,7 +72,7 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None, dat
     train_true_ds = LabeledSubset(train_ds, keep)
     train_true_ds = CustomDataset(train_true_ds)
 
-    test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=True, num_workers=4)
+    test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)
     
     return train_true_ds, test_dl
 
