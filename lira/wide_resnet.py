@@ -73,3 +73,87 @@ class WideResNet(nn.Module):
         out = self.linear(out)
 
         return out
+
+
+
+class VGG16(nn.Module):
+    def __init__(self):
+        super(VGG16, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(in_channels=3,out_channels=64,kernel_size=3,stride=1,padding=1), #输入图片为3*32*32   same卷积，增加通道数,输出64*32*32
+            nn.BatchNorm2d(num_features=64),   #强行将数据拉回到均值为0，方差为1的正态分布上;一方面使得数据分布一致，另一方面避免梯度消失。
+            nn.ReLU(),
+            nn.Conv2d(64,64,3,1,1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2,stride=2)     #输出64*16*16
+        )
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(64,128,3,1,1),   #输出128*16*16
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.Conv2d(128,128,3,1,1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(2,2)    #输出128*8*8
+        )
+        self.layer3 = nn.Sequential(
+            nn.Conv2d(128,256,3,1,1),  #输出256*8*8
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256,256,3,1,1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256,256,3,1,1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(2,2)   #输出256*4*4
+        )
+        self.layer4 = nn.Sequential(
+            nn.Conv2d(256,512,3,1,1),  #输出512*4*4
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.Conv2d(512,512,3,1,1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.Conv2d(512,512,3,1,1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.MaxPool2d(2,2)   #输出512*2*2
+        )
+        self.layer5 = nn.Sequential(
+            nn.Conv2d(512, 512, 3, 1, 1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.Conv2d(512, 512, 3, 1, 1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.Conv2d(512, 512, 3, 1, 1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.MaxPool2d(2,2)   #输出512*1*1
+        )
+        self.fc = nn.Sequential(
+            nn.Flatten(),    #输出512*1*1
+            nn.Linear(in_features=512,out_features=512),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+            nn.Linear(512,256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256,10),
+        )
+ 
+        self.model = nn.Sequential(
+            self.layer1,
+            self.layer2,
+            self.layer3,
+            self.layer4,
+            self.layer5,
+            self.fc
+        )
+ 
+ 
+    def forward(self,x):
+        x = self.model(x)
+        return x

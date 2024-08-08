@@ -73,19 +73,19 @@ def main():
     poisoned_train_ds, unlearn_ds, flipped_ds = poisoner.get_poisoned_data_loader()
 
     # =========== 投毒数据集
-    # print(f"=== Size of poisoned train_dl: {len(poisoned_train_ds)}")
-    # print(poisoned_train_ds.targets[:10])
-    # train(args, savedir, poisoned_train_ds, test_dl, DEVICE, "poisoned")
-    # inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned")
-    # score(args, savedir, poisoned_train_ds, "poisoned") 
+    print(f"=== Size of poisoned train_dl: {len(poisoned_train_ds)}")
+    print(poisoned_train_ds.targets[:10])
+    train(args, savedir, poisoned_train_ds, test_dl, DEVICE, "poisoned")
+    inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned")
+    score(args, savedir, poisoned_train_ds, "poisoned") 
 
-    # poisoned_train_removed_ds = remove_samples(poisoned_train_ds, args.target_sample)
+    poisoned_train_removed_ds = remove_samples(poisoned_train_ds, args.target_sample)
 
-    # print(f"=== Size of poisoned removed train_dl: {len(poisoned_train_removed_ds)}")
-    # print(poisoned_train_removed_ds.targets[:10])
-    # train(args, savedir, poisoned_train_removed_ds, test_dl, DEVICE, "poisoned_removed")
-    # inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned_removed")
-    # score(args, savedir, poisoned_train_ds, "poisoned_removed") 
+    print(f"=== Size of poisoned removed train_dl: {len(poisoned_train_removed_ds)}")
+    print(poisoned_train_removed_ds.targets[:10])
+    train(args, savedir, poisoned_train_removed_ds, test_dl, DEVICE, "poisoned_removed")
+    inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned_removed")
+    score(args, savedir, poisoned_train_ds, "poisoned_removed") 
 
 
 

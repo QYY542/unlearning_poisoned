@@ -8,6 +8,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import models, transforms
 from tqdm import tqdm
+from lira.wide_resnet import WideResNet, VGG16
 
 from lira.wide_resnet import WideResNet  # 确保路径正确，或根据你的项目结构调整
 
@@ -15,6 +16,7 @@ from lira.wide_resnet import WideResNet  # 确保路径正确，或根据你的�
 def inference(args, savedir, train_ds, device, data_type):
     train_dl = DataLoader(train_ds, batch_size=128, shuffle=False, num_workers=4)
 
+    # 初始化模型
     if args.dataset == "cifar10":
         if args.model == "resnet18":
             print("resnet18")
@@ -23,20 +25,20 @@ def inference(args, savedir, train_ds, device, data_type):
             model.maxpool = nn.Identity()
         elif args.model == "vgg16":
             print("vgg16")
-            model = models.vgg16(weights=None, num_classes=10)
-            model.features[0] = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            model = VGG16()
         else:
             raise NotImplementedError
     elif args.dataset == "FashionMNIST":
         if args.model == "resnet18":
             print("resnet18")
             model = models.resnet18(weights=None, num_classes=10)
-            model.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+            model.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)
             model.maxpool = nn.Identity()
         elif args.model == "vgg16":
             print("vgg16")
-            model = models.vgg16(weights=None, num_classes=10)
-            model.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)  # 修改输入通道为1
+            model = VGG16()
+            # 修改VGG16模型的第一层卷积层的输入通道数为1
+            model.layer1[0] = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=3, stride=1, padding=1)
         else:
             raise NotImplementedError
 
