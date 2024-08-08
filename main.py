@@ -7,7 +7,6 @@ import wandb
 from torch.utils.data import DataLoader, Subset, ConcatDataset
 from data_loader import get_data_loaders
 from unlearner import unlearn_unrolling_sgd
-from optimize import optimize_omega, simulate_annealing
 from poisoner import Poisoner  # 导入Poisoner类和全局变量
 from lira.train import train  # 引入 train函数
 from lira.inference import inference  # 引入 inference 函数
@@ -86,8 +85,6 @@ def main():
     train(args, savedir, poisoned_train_removed_ds, test_dl, DEVICE, "poisoned_removed")
     inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned_removed")
     score(args, savedir, poisoned_train_ds, "poisoned_removed") 
-
-
 
     # =========== 重训练数据集
     print(f"=== Size of clean train_dl: {len(train_ds)}")
