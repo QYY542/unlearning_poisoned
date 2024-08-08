@@ -21,7 +21,7 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None, dat
     np.random.seed(seed)
     
     # 数据集加载和预处理
-    if args.dataset == "cifar10":
+    if dataset == "cifar10":
         train_transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2470, 0.2435, 0.2616]),
@@ -33,7 +33,7 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None, dat
         datadir = Path().home() / "opt/data/cifar"
         train_ds = CIFAR10(root=datadir, train=True, download=True, transform=train_transform)
         test_ds = CIFAR10(root=datadir, train=False, download=True, transform=test_transform)
-    elif args.dataset == "cifar100":
+    elif dataset == "cifar100":
         train_transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize([0.5071, 0.4865, 0.4409], [0.2673, 0.2564, 0.2762]),
@@ -45,7 +45,7 @@ def get_data_loaders(pkeep, shadow_id, n_shadows, batch_size=128, seed=None, dat
         datadir = Path().home() / "opt/data/cifar100"
         train_ds = CIFAR100(root=datadir, train=True, download=True, transform=train_transform)
         test_ds = CIFAR100(root=datadir, train=False, download=True, transform=test_transform)
-    elif args.dataset == "FashionMNIST":
+    elif dataset == "FashionMNIST":
         train_transform = transforms.Compose([
             transforms.Resize((32, 32)), 
             transforms.ToTensor(),

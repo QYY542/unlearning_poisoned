@@ -46,7 +46,7 @@ def main():
     parser.add_argument('--eval_every', default=50, type=int, help='eval every N steps')
     args = parser.parse_args()
 
-    DEVICE = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # seed = np.random.randint(0, 1000000000)
     # seed ^= int(time.time())
@@ -73,21 +73,19 @@ def main():
     poisoned_train_ds, unlearn_ds, flipped_ds = poisoner.get_poisoned_data_loader()
 
     # =========== 投毒数据集
-    # print(f"=== Size of poisoned train_dl: {len(poisoned_train_ds)}")
-    # print(poisoned_train_ds.targets[:10])
-    # train(args, savedir, poisoned_train_ds, test_dl, DEVICE, "poisoned")
-    # inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned")
-    # score(args, savedir, poisoned_train_ds, "poisoned") 
+    print(f"=== Size of poisoned train_dl: {len(poisoned_train_ds)}")
+    print(poisoned_train_ds.targets[:10])
+    train(args, savedir, poisoned_train_ds, test_dl, DEVICE, "poisoned")
+    inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned")
+    score(args, savedir, poisoned_train_ds, "poisoned") 
 
-    # poisoned_train_removed_ds = remove_samples(poisoned_train_ds, args.target_sample)
+    poisoned_train_removed_ds = remove_samples(poisoned_train_ds, args.target_sample)
 
-    # print(f"=== Size of poisoned removed train_dl: {len(poisoned_train_removed_ds)}")
-    # print(poisoned_train_removed_ds.targets[:10])
-    # train(args, savedir, poisoned_train_removed_ds, test_dl, DEVICE, "poisoned_removed")
-    # inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned_removed")
-    # score(args, savedir, poisoned_train_ds, "poisoned_removed") 
-
-
+    print(f"=== Size of poisoned removed train_dl: {len(poisoned_train_removed_ds)}")
+    print(poisoned_train_removed_ds.targets[:10])
+    train(args, savedir, poisoned_train_removed_ds, test_dl, DEVICE, "poisoned_removed")
+    inference(args, savedir, poisoned_train_ds, DEVICE, "poisoned_removed")
+    score(args, savedir, poisoned_train_ds, "poisoned_removed") 
 
     # =========== 重训练数据集
     print(f"=== Size of clean train_dl: {len(train_ds)}")

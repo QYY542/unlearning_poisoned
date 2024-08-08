@@ -17,7 +17,10 @@ from tqdm import tqdm
 def train(args, savedir, train_ds, test_dl, DEVICE, data_type):
     args.debug = True
     wandb.init(project="lira", mode="disabled" if args.debug else "online")
-    train_dl = DataLoader(train_ds, batch_size=128, shuffle=True, num_workers=4)
+    batch_size = 128
+    if args.dataset == "FashionMNIST":
+        batch_size = 500
+    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
 
     # 初始化模型
     if args.dataset == "cifar10":
