@@ -22,7 +22,7 @@ def remove_samples(dataset, target_sample):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="cifar10", type=str, choices=["cifar10", "FashionMNIST"])
+    parser.add_argument("--dataset", default="cifar10", type=str, choices=["cifar10", "cifar100","FashionMNIST"])
     parser.add_argument("--lr", default=0.1, type=float)
     parser.add_argument("--epochs", default=1, type=int)
     parser.add_argument("--n_shadows", default=16, type=int)
@@ -32,7 +32,7 @@ def main():
     parser.add_argument("--pkeep", default=0.5, type=float)
     parser.add_argument("--savedir", default="exp", type=str)
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--poison_type", default="random_label", type=str, choices=["random_label", "fixed_label", "flipped_label", "random_samples"])
+    parser.add_argument("--poison_type", default="flipped_label", type=str, choices=["random_label", "fixed_label", "flipped_label", "random_samples"])
     parser.add_argument("--target_sample", default=0, type=int)
     parser.add_argument("--fixed_label", default=0, type=int)
     parser.add_argument("--repeat_num", default=10, type=int)
@@ -45,7 +45,7 @@ def main():
     parser.add_argument('--eval_every', default=50, type=int, help='eval every N steps')
     args = parser.parse_args()
 
-    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    DEVICE = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
     # seed = np.random.randint(0, 1000000000)
     # seed ^= int(time.time())

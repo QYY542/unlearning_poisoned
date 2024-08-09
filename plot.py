@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--poison_type", default="random_label", type=str, choices=["random_label", "fixed_label", "flipped_label", "random_samples"])
 parser.add_argument("--target_sample", type=int, default=0, help="Index of the sample to extract scores for")
 parser.add_argument("--model", default="vgg16", type=str)
-parser.add_argument("--dataset", default="cifar10", type=str, choices=["cifar10", "FashionMNIST"])
+parser.add_argument("--dataset", default="cifar10", type=str, choices=["cifar10", "cifar100", "FashionMNIST"])
 args = parser.parse_args()
 savedir = os.path.join("exp/", args.dataset, args.model, args.poison_type, str(f'target_sample_{args.target_sample}'))
 

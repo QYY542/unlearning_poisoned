@@ -45,6 +45,12 @@ def get_data_loaders(pkeep=0.5, shadow_id=0, n_shadows=30, batch_size=128, seed=
         datadir = Path().home() / "opt/data/cifar100"
         train_ds = CIFAR100(root=datadir, train=True, download=True, transform=train_transform)
         test_ds = CIFAR100(root=datadir, train=False, download=True, transform=test_transform)
+
+        # 取 CIFAR100 测试数据集的 50%
+        test_size = len(test_ds)
+        indices = np.random.choice(test_size, size=test_size // 2, replace=False)
+        test_ds = LabeledSubset(test_ds, indices)
+        
     elif dataset == "FashionMNIST":
         train_transform = transforms.Compose([
             transforms.Resize((32, 32)), 
@@ -60,16 +66,19 @@ def get_data_loaders(pkeep=0.5, shadow_id=0, n_shadows=30, batch_size=128, seed=
         train_ds = FashionMNIST(root=datadir, train=True, download=True, transform=train_transform)
         test_ds = FashionMNIST(root=datadir, train=False, download=True, transform=test_transform)
 
-    size = len(train_ds)
-    keep_bool = np.full((size), False)
+    if dataset != "cifar100":
+        size = len(train_ds)
+        keep_bool = np.full((size), False)
 
-    keep_file = Path("save/keep.npy")
-    if keep_file.exists():
-        keep_bool = np.load(keep_file)
+        keep_file = Path("save/keep.npy")
+        if keep_file.exists():
+            keep_bool = np.load(keep_file)
 
-    keep = np.where(keep_bool)[0]
+        keep = np.where(keep_bool)[0]
 
-    train_true_ds = LabeledSubset(train_ds, keep)
+        train_true_ds = LabeledSubset(train_ds, keep)
+    else:
+        train_true_ds = train_ds
     train_true_ds = CustomDataset(train_true_ds)
 
     test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)

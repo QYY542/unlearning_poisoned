@@ -1,6 +1,6 @@
 #!/bin/bash
 
-EPOCHS=60
+EPOCHS=200
 REPEAT_NUM=300
 NUM_PER_LABEL=4
 MODEL=mobilenet_v2
